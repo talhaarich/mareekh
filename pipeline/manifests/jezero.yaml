@@ -1,0 +1,15 @@
+# Jezero region: box corners and base. Owner: Sadia (task 4).
+# Schema is a proposal (CONTRACTS.md does not define this file): name, base, base_name, bounds.
+# bounds is [south, west, north, east] in degrees, planetocentric, longitude east (CONVENTIONS.md).
+#
+# STATUS: box set from the numbers in the team's Drive message (I could not open the Drive folder or the
+# real jezero.yaml in it, so compare this file with that one before merging; the Drive copy wins if they differ).
+# Still to do: run build_stations() with the real waypoint file, which checks base and every station
+# are at least 500 m inside this box. Then post the corners in the chat.
+name: Jezero Crater, crater floor and western delta
+base_name: Base
+base:
+  # From CONTEXT.md "Home site: about 18.4446 N, 77.4509 E". Frame still to be confirmed (planetocentric vs planetographic).
+  lat: 18.4446
+  lon: 77.4509
+bounds: [17.95, 77.10, 18.85, 78.00]   # [south, west, north, east], as reported for the Drive data (CTX height covers all of it). Station margin (500 m) NOT yet checked: waits for the waypoint file.

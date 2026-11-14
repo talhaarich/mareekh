@@ -18,7 +18,10 @@ interface PlanParams {
   slopeLimitDeg: number;   // default from assumptions: slope_limit_plan_deg
   carriedKg: number;       // equipment carried, 0 to 40
   timeLimitS: number;      // default from assumptions: eva_time_limit_s
+  objective?: Objective;   // default "time"
 }
+
+type Objective = "time" | "distance";  // what each leg's route minimises: walking time (fastest) or walked distance (shortest)
 
 interface Leg {
   fromId: string; toId: string;
@@ -85,7 +88,7 @@ walkHomeS(p: LatLon): number                                   // Infinity when 
 | --- | --- | --- | --- |
 | `data` | `grid`, `manifest`, `stations`, `assumptions`, `conditions`, `loaded` | Talha (loaders) | Everyone |
 | `params` | `PlanParams` | Rafay (sliders) | Talha |
-| `plan` | `result: PlanResult or null`, `busy: boolean` | Talha only | Rafay |
+| `plan` | `result: PlanResult or null`, `busy: boolean`, `compare: PlanResult or null` | Talha only | Rafay |
 | `base` | `LatLon` | Rafay (move-base tool) calls `setBase`; Talha replans | Everyone |
 | `position` | `estimate: LatLon`, `uncertaintyM`, `sinceFixM`, `elapsedS`, `simulated: true`, `fixes: { stationId, elapsedS }[]` | Talha only | Rafay |
 | `view` | `baseView`, `reach: "off" or "distance" or "time"`, `overlay: string or null`, `overlayStrength`, `showWind`, `showLabels`, `mode: "plan" or "eva"` | Rafay only | Rafay |
@@ -97,3 +100,12 @@ Rules:
 - Changing `params` or `base` triggers one replan. Sliders send the new value when released, not on every pixel.
 - `pins` are saved in the browser under the key `mm.pins.v1`.
 - The interface never computes a route number itself. If it needs a number that `PlanResult` lacks, the spec changes first.
+- Route A, `result`, is always the plan: the fastest route (`objective` "time") with the current `params`.
+- Compare (route B) changes one thing at a time. Presets:
+  - `off`: no compare; `compare` is null.
+  - `steeper`: fastest, with `slopeLimitDeg` = `slope_limit_hard_deg`.
+  - `shortest`: `objective` "distance", with the plan's slope limit.
+  The interface builds route B's `params` from the preset and calls `requestCompare(params)`. The worker gets the same
+  `plan` message with its own `requestId`; replies older than the latest compare request are ignored. `compare` is
+  cleared whenever `params` or `base` change.
+- Times, energy, dose and status for a "distance" route use the same speed model as for a "time" route; only the path differs.

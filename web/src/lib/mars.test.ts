@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { parseAssumptions, assumptionValue } from '../state/data'
-import { bearingDeg, distanceM } from './mars'
+import { bearingDeg, destination, distanceM } from './mars'
 
 // The radius comes from the example assumptions file, never typed into code.
 const assumptions = parseAssumptions(
@@ -42,5 +42,16 @@ describe('bearingDeg', () => {
     const b = bearingDeg(o, { lat: 18.5, lon: 77.4 }) // north-west
     expect(b).toBeGreaterThan(270)
     expect(b).toBeLessThan(360)
+  })
+})
+
+describe('destination', () => {
+  const o = { lat: 18.4446, lon: 77.4509 }
+  it('lands the given distance away on the given bearing', () => {
+    for (const b of [0, 45, 90, 180, 271.5]) {
+      const p = destination(o, b, 1234, R)
+      expect(distanceM(o, p, R)).toBeCloseTo(1234, 6)
+      expect(bearingDeg(o, p)).toBeCloseTo(b % 360, 6)
+    }
   })
 })

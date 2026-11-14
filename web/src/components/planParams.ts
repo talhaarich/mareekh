@@ -49,6 +49,8 @@ export const usePlanParams = create<ParamsState>()((set, get) => ({
  */
 export function usePlanner(): void {
   const loaded = useData((s) => s.loaded)
+  // The grid loads separately from the JSON files; without it the planner has no terrain to route on.
+  const hasGrid = useData((s) => s.grid !== null)
   const assumptions = useData((s) => s.assumptions)
   const stations = useData((s) => s.stations)
   const params = usePlanParams((s) => s.params)
@@ -59,9 +61,9 @@ export function usePlanner(): void {
   }, [loaded, assumptions, init])
 
   useEffect(() => {
-    if (!loaded || !params || stations.length === 0) return
+    if (!loaded || !hasGrid || !params || stations.length === 0) return
     const base = { lat: stations[0].lat, lon: stations[0].lon }
     usePlan.getState().requestPlan(stations, params)
     usePlan.getState().requestWalkHome(base, params)
-  }, [loaded, params, stations])
+  }, [loaded, hasGrid, params, stations])
 }

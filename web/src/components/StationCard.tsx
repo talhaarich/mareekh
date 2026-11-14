@@ -29,17 +29,10 @@ function StationPhoto({ photo, stationName }: { photo: Photo; stationName: strin
   )
 }
 
-/** Walk-home time is not reactive in the plan slice, so check again until the field has arrived. */
+/** Walk-home time. Subscribing to walkHomeVersion re-renders this when a new field arrives. */
 function useWalkHome(lat: number, lon: number): number {
-  const result = usePlan((s) => s.result)
-  const [, tick] = useState(0)
-  const value = walkHomeS({ lat, lon })
-  useEffect(() => {
-    if (!Number.isNaN(value)) return
-    const id = setInterval(() => tick((n) => n + 1), 400)
-    return () => clearInterval(id)
-  }, [value, result])
-  return value
+  usePlan((s) => s.walkHomeVersion)
+  return walkHomeS({ lat, lon })
 }
 
 function Card({ id }: { id: string }) {

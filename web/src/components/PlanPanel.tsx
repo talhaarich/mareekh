@@ -82,6 +82,7 @@ function assumptionNote(assumptions: Assumption[], key: string): string {
 
 export default function PlanPanel() {
   const loaded = useData((s) => s.loaded)
+  const gridError = useData((s) => s.gridError)
   const assumptions = useData((s) => s.assumptions)
   const result = usePlan((s) => s.result)
   const busy = usePlan((s) => s.busy)
@@ -110,6 +111,10 @@ export default function PlanPanel() {
             </div>
             <p className="text-sm text-fg">{result.reason}</p>
           </>
+        ) : gridError ? (
+          <p role="status" className="text-sm text-fg-muted">
+            Planning is off: the height grid could not load ({gridError}). The data pipeline builds it.
+          </p>
         ) : (
           <p className="text-sm text-fg-muted">{busy ? 'Planning the walk…' : 'No plan yet.'}</p>
         )}

@@ -39,7 +39,7 @@ export default function AppShell({ left, right, children, regionName, notice }: 
   const drawerBase = 'absolute inset-y-0 z-20 overflow-y-auto bg-panel p-4 transition-transform lg:static lg:translate-x-0'
 
   return (
-    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-bg font-sans text-fg">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-bg font-sans text-fg print:hidden">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-line bg-panel px-4">
         <div className="flex items-baseline gap-3">
           <span className="text-sm font-bold uppercase tracking-[0.2em] text-brand">Martian Map</span>

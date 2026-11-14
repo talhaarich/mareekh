@@ -27,6 +27,10 @@
   --color-pin-sample: #60a5fa;
   --color-pin-feature: #c4b5fd;
 
+  /* Printed route card: plain ink on paper, so it reads on any printer */
+  --color-paper: #ffffff;
+  --color-ink: #000000;
+
   /* Cockpit status: reserved */
   --color-go: #22c55e;
   --color-caution: #fbbf24;

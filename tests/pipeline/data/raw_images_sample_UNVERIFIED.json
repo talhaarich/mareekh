@@ -1,0 +1,12 @@
+{
+  "_note": "HAND-BUILT SAMPLE. Not a real NASA response. Shape modelled on memory of the Mars 2020 raw-images feed. Replace with one real saved response (see docs/chat-posts.md) and rerun tests/pipeline/test_photos.py.",
+  "images": [
+    {"sol": 690, "sample_type": "Full", "camera": {"instrument": "MCZ_LEFT"}, "credit": "NASA/JPL-Caltech/ASU", "image_files": {"large": "https://example.invalid/sample/mcz_left_large.jpg", "full_res": "https://example.invalid/sample/mcz_left_full.jpg"}},
+    {"sol": 690, "sample_type": "Full", "camera": {"instrument": "MCZ_LEFT"}, "credit": "NASA/JPL-Caltech/ASU", "image_files": {"large": "https://example.invalid/sample/mcz_left_large_2.jpg"}},
+    {"sol": 690, "sample_type": "Thumbnail", "camera": {"instrument": "NAVCAM_LEFT"}, "credit": "NASA/JPL-Caltech", "image_files": {"small": "https://example.invalid/sample/nav_thumb.jpg"}},
+    {"sol": 690, "sample_type": "Full", "camera": {"instrument": "NAVCAM_LEFT"}, "credit": "NASA/JPL-Caltech", "image_files": {"medium": "https://example.invalid/sample/nav_medium.jpg"}},
+    {"sol": 690, "sample_type": "Full", "camera": {"instrument": "FRONT_HAZCAM_LEFT_A"}, "image_files": {"full_res": "https://example.invalid/sample/haz_full.jpg"}},
+    {"sol": 691, "sample_type": "Full", "camera": {"instrument": "SHERLOC_WATSON"}, "credit": "NASA/JPL-Caltech/MSSS", "image_files": {"large": "https://example.invalid/sample/other_sol.jpg"}},
+    {"sol": 690, "sample_type": "Full", "camera": {"instrument": "SUPERCAM_RMI"}, "credit": "NASA/JPL-Caltech/LANL", "image_files": {}}
+  ]
+}

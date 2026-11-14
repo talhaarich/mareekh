@@ -4,64 +4,96 @@
     "name": "Base",
     "lat": 18.4446,
     "lon": 77.4509,
-    "task": "Habitat. Start and end of the walk.",
+    "task": "Start and end of the walk.",
     "dwell_s": 0,
     "sol": null,
-    "photos": [],
-    "_placeholder": false
+    "photos": []
   },
   {
     "id": "S1",
-    "name": "Sample depot",
-    "lat": 18.45,
-    "lon": 77.405,
-    "task": "Collect the sample tubes left on the surface. Check each tube ID against the list.",
+    "name": "Three Forks depot",
+    "lat": 18.45337179,
+    "lon": 77.40844668,
+    "task": "Collect the sample tubes Perseverance left at the Three Forks depot: 10 tubes laid out 5 to 15 m apart on flat ground at the foot of the delta.",
     "dwell_s": 1200,
-    "sol": 653,
+    "sol": 686,
     "photos": [
       {
-        "url": "https://example.invalid/replace-with-real-rover-image.jpg",
-        "camera": "NAVCAM_LEFT",
-        "sol": 653,
-        "credit": "NASA/JPL-Caltech"
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/scam/LRF_0686_0727838809_632EBY_N0321174SCAM01686_0010I9J01_1200.jpg",
+        "camera": "SUPERCAM_RMI",
+        "sol": 686,
+        "credit": "NASA/JPL-Caltech/LANL/CNES/IRAP"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/zcam/ZR7_0686_0727837892_433ECM_N0321174ZCAM01058_1100LMJ03_1200.jpg",
+        "camera": "MCZ_RIGHT",
+        "sol": 686,
+        "credit": "NASA/JPL-Caltech/ASU"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/zcam/ZL7_0686_0727837892_433EBY_N0321174ZCAM01058_1100LMJ03_1200.jpg",
+        "camera": "MCZ_LEFT",
+        "sol": 686,
+        "credit": "NASA/JPL-Caltech/ASU"
       }
-    ],
-    "_placeholder": true
+    ]
   },
   {
     "id": "S2",
-    "name": "Delta base",
-    "lat": 18.458,
-    "lon": 77.4,
-    "task": "Photograph the layered scarp. Sample the lowest exposed layer.",
+    "name": "Delta base (Hawksbill Gap)",
+    "lat": 18.45710164,
+    "lon": 77.40874595,
+    "task": "Sample the base of the delta, where the layered rocks are thought to have formed in a lake.",
     "dwell_s": 1200,
-    "sol": 423,
+    "sol": 437,
     "photos": [
       {
-        "url": "https://example.invalid/replace-with-real-rover-image.jpg",
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/zcam/ZL7_0437_0705726079_092EBY_N0243900ZCAM01013_0340LMJ02_1200.jpg",
+        "camera": "MCZ_LEFT",
+        "sol": 437,
+        "credit": "NASA/JPL-Caltech/ASU"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/zcam/ZR0_0437_0705735072_428EBY_N0243900ZCAM03361_1100LMJ02_1200.jpg",
+        "camera": "MCZ_RIGHT",
+        "sol": 437,
+        "credit": "NASA/JPL-Caltech/ASU"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/ncam/NLF_0437_0705741739_881EBY_N0244232SAPP00601_00_0LLJ01_1200.jpg",
         "camera": "NAVCAM_LEFT",
-        "sol": 423,
+        "sol": 437,
         "credit": "NASA/JPL-Caltech"
       }
-    ],
-    "_placeholder": true
+    ]
   },
   {
     "id": "S3",
     "name": "Delta top",
-    "lat": 18.47,
-    "lon": 77.39,
-    "task": "Sample boulders on the delta surface. Look back toward base for a radio check.",
+    "lat": 18.45879356,
+    "lon": 77.40601278,
+    "task": "Sample the top of the delta, where flat-lying beds point to river deposits laid down after the delta front built out.",
     "dwell_s": 1200,
-    "sol": null,
+    "sol": 464,
     "photos": [
       {
-        "url": "https://example.invalid/replace-with-real-rover-image.jpg",
-        "camera": "NAVCAM_LEFT",
-        "sol": 0,
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00464/ids/edr/browse/zcam/ZR6_0464_0708122537_318EBY_N0260630ZCAM03377_1100LMJ01_1200.jpg",
+        "camera": "MCZ_RIGHT",
+        "sol": 464,
+        "credit": "NASA/JPL-Caltech/ASU"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00464/ids/edr/browse/zcam/ZL0_0464_0708122528_318EBY_N0260630ZCAM03377_1100LMJ01_1200.jpg",
+        "camera": "MCZ_LEFT",
+        "sol": 464,
+        "credit": "NASA/JPL-Caltech/ASU"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00464/ids/edr/browse/fcam/FLF_0464_0708138950_977EBY_N0260756FHAZ02008_10_0LLJ01_1200.jpg",
+        "camera": "FRONT_HAZCAM_LEFT_A",
+        "sol": 464,
         "credit": "NASA/JPL-Caltech"
       }
-    ],
-    "_placeholder": true
+    ]
   }
 ]

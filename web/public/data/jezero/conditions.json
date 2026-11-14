@@ -1,8 +1,8 @@
 {
-  "sol": 0,
+  "sol": 100,
   "tau": 0.4,
-  "air_temp_k": 211.0,
-  "pressure_pa": 730.0,
-  "source": "Example values, not measured",
-  "caveat": "Replace with values from the rover weather data."
+  "air_temp_k": 217.47,
+  "pressure_pa": 759.08,
+  "source": "NASA PDS Atmospheres Node, Mars 2020 MEDA (derived pressure, calibrated ATS), sol 100",
+  "caveat": "Median over the hours MEDA measured on this sol (about 12 of 24); not a full-day average. Tau supplied separately."
 }

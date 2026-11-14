@@ -175,3 +175,29 @@ describe('formatDuration', () => {
     expect(formatDuration(3599)).toBe('1 h 0 min')
   })
 })
+
+describe('fastest vs shortest', () => {
+  // A smooth hill (not blocked) between base and S1: straight over it is shortest, around it is fastest.
+  const g = makeGrid(25, 13, [], (r, c) => 45 * Math.exp(-((r - 6) ** 2 + (c - 12) ** 2) / 10))
+  const stations = [station(g, 'B', 6, 0, 0), station(g, 'S1', 6, 24, 0)]
+  const fastest = planWalk(g, assumptions, stations, params(A('eva_time_limit_s')))
+  const shortest = planWalk(g, assumptions, stations, { ...params(A('eva_time_limit_s')), objective: 'distance' })
+
+  it('takes different paths, each best at its own objective', () => {
+    expect(shortest.legs[0].path).not.toEqual(fastest.legs[0].path)
+    expect(shortest.distanceM).toBeLessThan(fastest.distanceM)
+    expect(fastest.movingTimeS).toBeLessThan(shortest.movingTimeS)
+  })
+
+  it('times the shortest route with the same speed model', () => {
+    expect(shortest.ok).toBe(true)
+    expect(shortest.legs[0].timeS).toBeGreaterThan(0)
+    expect(shortest.totalTimeS).toBeCloseTo(shortest.movingTimeS + shortest.stationTimeS, 9)
+    expect(shortest.legs[0].climbM).toBeGreaterThan(fastest.legs[0].climbM) // it goes over the hill
+  })
+
+  it('defaults to fastest when objective is not given', () => {
+    const explicit = planWalk(g, assumptions, stations, { ...params(A('eva_time_limit_s')), objective: 'time' })
+    expect(explicit.movingTimeS).toBe(fastest.movingTimeS)
+  })
+})

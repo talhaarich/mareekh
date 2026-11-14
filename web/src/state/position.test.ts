@@ -90,6 +90,13 @@ describe('interface helpers', () => {
     expect(helpers.latLonToCell({ lat: 0, lon: 0 })).toBeNull()
   })
 
+  it('build route B params from a compare preset, changing one thing', () => {
+    const plan = { slopeLimitDeg: 15, carriedKg: 10, timeLimitS: 21600 }
+    expect(helpers.compareParams('off', plan)).toBeNull()
+    expect(helpers.compareParams('steeper', plan)).toEqual({ ...plan, objective: 'time', slopeLimitDeg: assumptionValue(assumptions, 'slope_limit_hard_deg') })
+    expect(helpers.compareParams('shortest', plan)).toEqual({ ...plan, objective: 'distance' })
+  })
+
   it('throw a clear error before the grid has loaded', () => {
     useData.setState({ grid: null })
     expect(() => helpers.cellToLatLon(0, 0)).toThrow('Grid not loaded yet')

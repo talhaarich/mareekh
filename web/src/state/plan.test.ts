@@ -14,8 +14,56 @@ function fakeWorker() {
 }
 
 const result = (reason: string) => ({ reason }) as PlanResult
-const stations = [] as Station[]
+const stations = [{ id: 'B' }] as Station[]
 const params = { slopeLimitDeg: 15, carriedKg: 0, timeLimitS: 21600 }
+
+describe('compare (route B)', () => {
+  it('reuses the plan message with its own requestId and the last stations', () => {
+    const f = fakeWorker()
+    const { usePlan } = createPlanStore(() => f.w)
+    usePlan.getState().requestPlan(stations, params)
+    usePlan.getState().requestCompare({ ...params, objective: 'distance' })
+    expect(f.sent[1]).toMatchObject({ type: 'plan', stations, params: { objective: 'distance' } })
+    expect(f.sent[1].requestId).not.toBe(f.sent[0].requestId)
+    f.reply({ type: 'planResult', requestId: f.sent[1].requestId, result: result('B') })
+    f.reply({ type: 'planResult', requestId: f.sent[0].requestId, result: result('A') })
+    expect(usePlan.getState()).toMatchObject({ result: { reason: 'A' }, compare: { reason: 'B' } })
+  })
+
+  it('ignores a stale compare reply', () => {
+    const f = fakeWorker()
+    const { usePlan } = createPlanStore(() => f.w)
+    usePlan.getState().requestPlan(stations, params)
+    usePlan.getState().requestCompare({ ...params, slopeLimitDeg: 20 })
+    usePlan.getState().requestCompare({ ...params, objective: 'distance' })
+    f.reply({ type: 'planResult', requestId: f.sent[1].requestId, result: result('old B') })
+    expect(usePlan.getState().compare).toBeNull()
+  })
+
+  it('is cleared by a replan, and a compare still running becomes stale', () => {
+    const f = fakeWorker()
+    const { usePlan } = createPlanStore(() => f.w)
+    usePlan.getState().requestPlan(stations, params)
+    usePlan.getState().requestCompare({ ...params, objective: 'distance' })
+    f.reply({ type: 'planResult', requestId: f.sent[1].requestId, result: result('B') })
+    usePlan.getState().requestCompare({ ...params, objective: 'distance' })
+    usePlan.getState().requestPlan(stations, { ...params, carriedKg: 10 }) // params changed
+    expect(usePlan.getState().compare).toBeNull()
+    f.reply({ type: 'planResult', requestId: f.sent[2].requestId, result: result('stale B') })
+    expect(usePlan.getState().compare).toBeNull()
+  })
+
+  it('can be turned off, and needs a plan first', () => {
+    const f = fakeWorker()
+    const { usePlan } = createPlanStore(() => f.w)
+    expect(() => usePlan.getState().requestCompare(params)).toThrow('Plan the walk before comparing')
+    usePlan.getState().requestPlan(stations, params)
+    usePlan.getState().requestCompare(params)
+    f.reply({ type: 'planResult', requestId: f.sent[1].requestId, result: result('B') })
+    usePlan.getState().clearCompare()
+    expect(usePlan.getState().compare).toBeNull()
+  })
+})
 
 describe('plan store', () => {
   it('sends a plan request and stores the reply', () => {

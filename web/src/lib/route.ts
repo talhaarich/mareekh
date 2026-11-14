@@ -1,8 +1,12 @@
 /**
- * Route finder: Dijkstra on walking time over the grid, eight neighbours, blocked cells never entered.
+ * Route finder: Dijkstra over the grid, eight neighbours, blocked cells never entered.
+ * Minimises walking time (fastest, the default) or 3D walked distance (shortest), per PLANNER_API `Objective`.
  * Design: docs/HOW_IT_WORKS.md section 4. Runs in the router worker; plain functions so it can be tested.
- * Times are kept in 64-bit floats throughout (Float64Array), as the brief asks.
+ * Costs are kept in 64-bit floats throughout (Float64Array), as the brief asks.
  */
+
+/** What a search minimises: walking time in seconds, or 3D walked distance in metres. */
+export type Objective = 'time' | 'distance'
 
 import { NEIGHBOURS, neighbourIndex, stepTimeS, type SpeedModel } from './cost'
 import type { Grid } from './grid'
@@ -60,10 +64,11 @@ class MinHeap {
 
 export interface SearchResult {
   /**
-   * Seconds per cell: from the source (forward) or to the source (reverse). Infinity when unreachable.
-   * Cells the search did not finish (it stops early at `goal`) may hold upper bounds or Infinity.
+   * Cost per cell, in seconds ("time") or metres ("distance"): from the source (forward) or to the source
+   * (reverse). Infinity when unreachable. Cells the search did not finish (it stops early at `goal`) may
+   * hold upper bounds or Infinity.
    */
-  timeS: Float64Array
+  cost: Float64Array
   /** Previous cell on the best route (forward), or next cell toward the source (reverse). -1 if none. */
   prev: Int32Array
 }
@@ -76,6 +81,8 @@ export interface SearchOptions {
    * Used for the walk-home field, because uphill and downhill cost differently.
    */
   reverse?: boolean
+  /** Default "time". */
+  objective?: Objective
 }
 
 /**
@@ -85,14 +92,15 @@ export interface SearchOptions {
 export function search(grid: Grid, blocked: Uint8Array, model: SpeedModel, source: number, opts: SearchOptions = {}): SearchResult {
   const { width, resM } = grid.meta
   const n = grid.dem.length
-  const timeS = new Float64Array(n).fill(Infinity)
+  const cost = new Float64Array(n).fill(Infinity)
   const prev = new Int32Array(n).fill(-1)
   const done = new Uint8Array(n)
   const heap = new MinHeap()
   const goal = opts.goal ?? -1
   const reverse = opts.reverse === true
+  const byDistance = opts.objective === 'distance'
 
-  timeS[source] = 0
+  cost[source] = 0
   heap.push(source, 0)
   while (heap.size > 0) {
     const u = heap.pop()
@@ -105,17 +113,20 @@ export function search(grid: Grid, blocked: Uint8Array, model: SpeedModel, sourc
       const v = neighbourIndex(grid.meta, row, col, k)
       if (v < 0 || done[v]) continue
       const flatM = resM * NEIGHBOURS[k].flatFactor
-      const step = reverse ? stepTimeS(grid, blocked, model, v, u, flatM) : stepTimeS(grid, blocked, model, u, v, flatM)
+      const from = reverse ? v : u
+      const to = reverse ? u : v
+      let step = stepTimeS(grid, blocked, model, from, to, flatM) // also says whether the step is allowed
       if (step === Infinity) continue
-      const t = timeS[u] + step
-      if (t < timeS[v]) {
-        timeS[v] = t
+      if (byDistance) step = Math.hypot(flatM, grid.dem[to] - grid.dem[from])
+      const t = cost[u] + step
+      if (t < cost[v]) {
+        cost[v] = t
         prev[v] = u
         heap.push(v, t)
       }
     }
   }
-  return { timeS, prev }
+  return { cost, prev }
 }
 
 /** Cells from `source` to `goal` along a forward search's `prev`, or null when goal was not reached. */
@@ -134,14 +145,14 @@ export interface Route {
   ok: boolean
   /** Cell indices from start to goal, inclusive. Empty when ok is false. */
   cells: number[]
-  /** Walking time, seconds. Infinity when ok is false. */
-  timeS: number
+  /** What the route minimised: seconds ("time") or metres ("distance"). Infinity when ok is false. */
+  cost: number
 }
 
-/** Fastest route between two cells. */
-export function findRoute(grid: Grid, blocked: Uint8Array, model: SpeedModel, start: number, goal: number): Route {
-  const { timeS, prev } = search(grid, blocked, model, start, { goal })
+/** Fastest (default) or shortest route between two cells. */
+export function findRoute(grid: Grid, blocked: Uint8Array, model: SpeedModel, start: number, goal: number, objective: Objective = 'time'): Route {
+  const { cost, prev } = search(grid, blocked, model, start, { goal, objective })
   const cells = pathCells(prev, start, goal)
-  if (!cells) return { ok: false, cells: [], timeS: Infinity }
-  return { ok: true, cells, timeS: timeS[goal] }
+  if (!cells) return { ok: false, cells: [], cost: Infinity }
+  return { ok: true, cells, cost: cost[goal] }
 }

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { describe, expect, it } from 'vitest'
-import type { FetchFile } from '../lib/grid'
+import { parseGridMeta, type FetchFile } from '../lib/grid'
+import { distanceM } from '../lib/mars'
 import { assumptionValue, loadAllData, parseAssumptions, parseConditions, parseManifest, parseStations } from './data'
 
 const repo = new URL('../../../', import.meta.url)
@@ -43,6 +44,17 @@ describe('web/public/data/jezero matches CONTRACTS.md', () => {
     const keys = [...doc.matchAll(/^\| `([a-z0-9_]+)` \|/gm)].map((x) => x[1])
     expect(keys).toHaveLength(20)
     for (const k of keys) expect(() => assumptionValue(a, k)).not.toThrow()
+  })
+  it('grid.json bounds agree with width x res_m and height x res_m (within 2%)', async () => {
+    // The planner measures by res_m and the range/bearing helpers by lat/lon: they must describe the same ground.
+    const g = parseGridMeta(await readJsonFile(`${dir}grid.json`))
+    const R = assumptionValue(parseAssumptions(await readJsonFile(`${dir}assumptions.json`)), 'mars_radius_m')
+    const [s, w, n, e] = g.bounds
+    const mid = (s + n) / 2
+    const northSouthM = distanceM({ lat: s, lon: w }, { lat: n, lon: w }, R)
+    const eastWestM = distanceM({ lat: mid, lon: w }, { lat: mid, lon: e }, R)
+    expect(Math.abs(northSouthM / (g.height * g.resM) - 1)).toBeLessThan(0.02)
+    expect(Math.abs(eastWestM / (g.width * g.resM) - 1)).toBeLessThan(0.02)
   })
   it('conditions.json', async () => {
     parseConditions(await readJsonFile(`${dir}conditions.json`))

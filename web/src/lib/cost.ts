@@ -98,3 +98,12 @@ export function stepTimeS(grid: Grid, blocked: Uint8Array, model: SpeedModel, fr
   const lengthM = Math.hypot(flatM, riseM)
   return lengthM / walkSpeedMs(riseM / flatM, model)
 }
+
+/** One step between two neighbouring cells, by index: seconds (Infinity if blocked), 3D metres and rise in metres. */
+export function stepBetween(grid: Grid, blocked: Uint8Array, model: SpeedModel, a: number, b: number): { timeS: number; lengthM: number; riseM: number } {
+  const w = grid.meta.width
+  const diagonal = Math.floor(a / w) !== Math.floor(b / w) && a % w !== b % w
+  const flatM = grid.meta.resM * (diagonal ? Math.SQRT2 : 1)
+  const riseM = grid.dem[b] - grid.dem[a]
+  return { timeS: stepTimeS(grid, blocked, model, a, b, flatM), lengthM: Math.hypot(flatM, riseM), riseM }
+}

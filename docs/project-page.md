@@ -30,4 +30,4 @@ The walk: two astronauts leave base, collect the sample tubes Perseverance left 
 
 **S2, Delta base.** The delta is why Perseverance was sent to Jezero. NASA's project scientist said the rocks from the base of the delta up to the Rocky Top level appear to have formed in a lake. Samples here test whether the lake could have held life and what the water was like.
 
-**S3, Delta top.** The upper delta holds flat-lying beds that researchers read as river deposits laid down on top of the delta front. They carry material from far upstream that the rover will never reach, so sampling here reads the story of the whole river system. The delta rises about 40 m above the crater floor, so reaching it is a climb. [Station sols for S2 and S3 still to confirm.]
+**S3, Delta top.** The upper delta holds flat-lying beds that researchers read as river deposits laid down on top of the delta front. They carry material from far upstream that the rover will never reach, so sampling here reads the story of the whole river system. From the depot to S3 is a climb of about 23 m, by the rover's own waypoint heights. [Station sols for S2 and S3 still to confirm.]

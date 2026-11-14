@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand'
-import { fetchDataFile, loadGrid, type FetchFile, type Grid } from '../lib/grid'
+import { fetchDataFile, gridScaleWarnings, loadGrid, type FetchFile, type Grid } from '../lib/grid'
 import type { LatLon } from '../lib/mars'
 import { asArray, asObject, bounds, int, num, oneOf, readJson, str } from '../lib/parse'
 
@@ -182,60 +182,83 @@ export function assumptionValue(assumptions: Assumption[], key: string): number 
   return a.value
 }
 
-// ---------- Loading ----------
-
-export interface LoadedData {
-  grid: Grid
-  manifest: Manifest
-  stations: Station[]
-  assumptions: Assumption[]
-  conditions: Conditions
-}
-
-/** Loads and checks every data file. Rejects with the file and field name if any file breaks its contract. */
-export async function loadAllData(fetchFile: FetchFile = fetchDataFile): Promise<LoadedData> {
-  const json = async (name: string) => readJson(await fetchFile(name), name)
-  const [grid, manifest, stations, assumptions, conditions] = await Promise.all([
-    loadGrid(fetchFile),
-    json('manifest.json').then(parseManifest),
-    json('stations.json').then(parseStations),
-    json('assumptions.json').then(parseAssumptions),
-    json('conditions.json').then(parseConditions),
-  ])
-  return { grid, manifest, stations, assumptions, conditions }
-}
-
 // ---------- Store ----------
 
 interface DataState {
+  /** Null until loaded, or when it could not load (see gridError). Only planning needs it. */
   grid: Grid | null
   manifest: Manifest | null
   stations: Station[]
   assumptions: Assumption[]
   conditions: Conditions | null
-  /** True once every file has loaded and passed its checks. */
+  /**
+   * True once manifest, stations, assumptions and conditions have all loaded and passed their checks.
+   * The grid loads separately: the map and station cards work without it.
+   */
   loaded: boolean
-  /** Loads everything once. Later calls return the same promise. Rejects (and logs) if a file is missing or wrong. */
+  /** Why the grid could not load (missing or broken grid.json / .bin files); null otherwise. */
+  gridError: string | null
+  /**
+   * Loads everything once; later calls return the same promise. Each file is set as soon as it arrives.
+   * Rejects (and logs) if a JSON file is missing or wrong; a grid failure only sets gridError.
+   */
   load: () => Promise<void>
 }
 
-let loading: Promise<void> | null = null
+const message = (err: unknown) => (err instanceof Error ? err.message : String(err))
 
-export const useData = create<DataState>()((set) => ({
-  grid: null,
-  manifest: null,
-  stations: [],
-  assumptions: [],
-  conditions: null,
-  loaded: false,
-  load: () => {
-    loading ??= loadAllData()
-      .then((d) => set({ ...d, loaded: true }))
-      .catch((err: unknown) => {
-        loading = null // allow a retry
-        console.error('Data load failed:', err)
-        throw err
-      })
-    return loading
-  },
-}))
+/** A data store reading files with `fetchFile`. The app uses `useData`; tests make their own. */
+export function createDataStore(fetchFile: FetchFile) {
+  let loading: Promise<void> | null = null
+
+  return create<DataState>()((set, get) => {
+    async function loadAll(): Promise<void> {
+      const json = async <T>(name: string, parse: (raw: unknown) => T): Promise<T> => parse(await readJson(await fetchFile(name), name))
+      const files = Promise.allSettled([
+        json('manifest.json', parseManifest).then((manifest) => set({ manifest })),
+        json('stations.json', parseStations).then((stations) => set({ stations })),
+        json('assumptions.json', parseAssumptions).then((assumptions) => set({ assumptions })),
+        json('conditions.json', parseConditions).then((conditions) => set({ conditions })),
+      ])
+      const grid = loadGrid(fetchFile).then(
+        (g) => set({ grid: g, gridError: null }),
+        (err: unknown) => {
+          set({ gridError: message(err) })
+          console.error('Grid load failed (planning is off until it loads):', message(err))
+        },
+      )
+
+      const failed = (await files).filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      if (failed.length === 0) set({ loaded: true })
+
+      await grid
+      const { grid: g, assumptions } = get()
+      const radius = assumptions.find((a) => a.key === 'mars_radius_m')
+      if (g && radius) for (const w of gridScaleWarnings(g.meta, radius.value)) console.warn(w)
+
+      if (failed.length > 0) {
+        for (const f of failed) console.error('Data load failed:', message(f.reason))
+        throw failed[0].reason
+      }
+    }
+
+    return {
+      grid: null,
+      manifest: null,
+      stations: [],
+      assumptions: [],
+      conditions: null,
+      loaded: false,
+      gridError: null,
+      load: () => {
+        loading ??= loadAll().catch((err: unknown) => {
+          loading = null // allow a retry
+          throw err
+        })
+        return loading
+      },
+    }
+  })
+}
+
+export const useData = createDataStore(fetchDataFile)

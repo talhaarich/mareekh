@@ -6,11 +6,15 @@ Turns a Perseverance waypoint file (GeoJSON, parsed to a dict) plus the team's
 Units: degrees for latitude/longitude, metres for distances, seconds for time.
 Coordinates are planetocentric, longitude positive east (CONVENTIONS.md).
 
-Assumed waypoint layout (NOT yet checked against a downloaded file, see
-docs/open-questions in chat-posts.md): a GeoJSON FeatureCollection whose features
-carry ``properties.sol``, ``properties.lat`` and ``properties.lon`` (degrees),
-optionally ``properties.drive``. If ``lat``/``lon`` are missing from the
-properties, a Point geometry ``[lon, lat]`` is used instead.
+Waypoint layout, checked against ``data/raw/M20_waypoints.json`` (NASA/JPL,
+https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json, FeatureCollection
+``M20_waypoints_sol2022_all``, 708 features): every feature has a Point geometry
+``[lon, lat, elev_geoid]`` and properties including ``sol``, ``site``, ``drive`` (all
+integers), ``lat``, ``lon`` (degrees, same values as the geometry) and ``elev_geoid`` (m).
+Features are in rover order, sorted by sol and by (site, drive). 125 sols have more than
+one feature (up to 4), and ``drive`` restarts at 0 when a new site starts, which can happen
+at the end of a sol. Properties ``lat``/``lon`` are read first; the Point geometry is the
+fallback when they are missing.
 """
 
 from __future__ import annotations
@@ -57,13 +61,22 @@ def _feature_latlon(feature: dict[str, Any]) -> tuple[float, float]:
     return lat, lon
 
 
+def _order_key(value: Any) -> float:
+    """``value`` as a number for ordering waypoints (site or drive); -inf when absent or not a number."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("-inf")
+
+
 def station_from_sol(waypoints: dict, sol: int) -> tuple[float, float]:
     """Return the rover position at the end of ``sol`` as ``(lat, lon)`` in degrees.
 
     ``waypoints`` is the parsed waypoint GeoJSON. When several waypoints share a
-    sol, the one with the highest ``properties.drive`` is used (file order breaks
-    ties, and decides when no drive number exists): that is where the rover
-    finished the sol.
+    sol, the last one in rover order is used: highest ``properties.site``, then highest
+    ``properties.drive`` within it (file order breaks ties, and decides when neither
+    number exists). That is where the rover finished the sol. Drive alone is not enough:
+    on 21 sols of the real file the sol ends at a new site with drive 0.
 
     Raises:
         StationError: if no waypoint exists for ``sol`` or its position is invalid.
@@ -74,7 +87,7 @@ def station_from_sol(waypoints: dict, sol: int) -> tuple[float, float]:
     if not isinstance(features, list) or not features:
         raise StationError("waypoints has no 'features' list")
 
-    matches: list[tuple[float, int, dict[str, Any]]] = []
+    matches: list[tuple[float, float, int, dict[str, Any]]] = []
     known_sols: set[int] = set()
     for index, feature in enumerate(features):
         feature_sol = _parse_sol((feature.get("properties") or {}).get("sol"))
@@ -82,18 +95,14 @@ def station_from_sol(waypoints: dict, sol: int) -> tuple[float, float]:
             continue
         known_sols.add(feature_sol)
         if feature_sol == sol:
-            drive = (feature.get("properties") or {}).get("drive")
-            try:
-                drive_key = float(drive)
-            except (TypeError, ValueError):
-                drive_key = float("-inf")
-            matches.append((drive_key, index, feature))
+            props = feature.get("properties") or {}
+            matches.append((_order_key(props.get("site")), _order_key(props.get("drive")), index, feature))
 
     if not matches:
         nearest = sorted(known_sols, key=lambda s: abs(s - sol))[:3]
         raise StationError(f"no waypoint for sol {sol}; nearest sols in the file: {sorted(nearest)}")
-    matches.sort(key=lambda m: (m[0], m[1]))
-    return _feature_latlon(matches[-1][2])
+    matches.sort(key=lambda m: (m[0], m[1], m[2]))
+    return _feature_latlon(matches[-1][3])
 
 
 def margin_to_box_m(lat: float, lon: float, bounds: list[float], mars_radius_m: float) -> float:

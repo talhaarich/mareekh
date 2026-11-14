@@ -120,11 +120,13 @@ describe('plan store', () => {
     const { usePlan, walkHomeS } = createPlanStore(() => f.w)
     const west = { lat: 18.0005, lon: 77.0005 }
     expect(walkHomeS(west)).toBeNaN() // nothing computed yet
+    expect(usePlan.getState().walkHomeVersion).toBe(0)
     usePlan.getState().requestWalkHome(west, params)
     usePlan.getState().requestWalkHome(west, params)
     f.reply({ type: 'walkHomeResult', requestId: f.sent[1].requestId, field: new Float32Array([0, 30]) })
     f.reply({ type: 'walkHomeResult', requestId: f.sent[0].requestId, field: new Float32Array([0, 999]) })
     expect(walkHomeS({ lat: 18.0005, lon: 77.0015 })).toBe(30)
+    expect(usePlan.getState().walkHomeVersion).toBe(1) // only the latest field counted
     expect(walkHomeS({ lat: 0, lon: 0 })).toBe(Infinity)
     useData.setState({ grid: null })
   })

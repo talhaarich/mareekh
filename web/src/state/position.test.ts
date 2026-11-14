@@ -5,7 +5,7 @@ import * as helpers from '../lib/helpers'
 import { planWalk } from '../lib/plan'
 import { assumptionValue, parseAssumptions, useData, type Station } from './data'
 import { usePlan } from './plan'
-import { selectFixPrompt, usePosition } from './position'
+import { selectFixPrompt, selectNextStop, selectTimeLeftS, usePosition } from './position'
 
 const examples = new URL('../../../examples/data/', import.meta.url)
 const assumptions = parseAssumptions(JSON.parse(await readFile(new URL('jezero/assumptions.json', examples), 'utf-8')))
@@ -99,6 +99,36 @@ describe('fix prompt', () => {
   })
 })
 
+describe('next stop and time left', () => {
+  const next = () => selectNextStop(usePosition.getState())
+
+  it('names the next station along the walk, then base on the way home, then nothing', () => {
+    expect(next()).toBe('S1') // at base, about to leave
+    usePosition.getState().simulateTo(legS / 2)
+    expect(next()).toBe('S1') // walking out
+    usePosition.getState().simulateTo(legS)
+    expect(next()).toBe('B') // arrived at S1: the stop after it is home
+    usePosition.getState().simulateTo(legS + 300)
+    expect(next()).toBe('B') // working at S1
+    usePosition.getState().simulateTo(legS + 600 + legS / 2)
+    expect(next()).toBe('B') // walking home
+    usePosition.getState().simulateTo(1e6)
+    expect(next()).toBeNull() // finished
+  })
+
+  it('is null with no plan', () => {
+    usePlan.setState({ result: null })
+    expect(next()).toBeNull()
+  })
+
+  it('time left is the limit minus simulated elapsed time, and goes negative past the limit', () => {
+    expect(selectTimeLeftS(usePosition.getState(), 21600)).toBe(21600)
+    usePosition.getState().simulateTo(100)
+    expect(selectTimeLeftS(usePosition.getState(), 21600)).toBeCloseTo(21500, 9)
+    expect(selectTimeLeftS({ elapsedS: 400 }, 300)).toBe(-100)
+  })
+})
+
 describe('interface helpers', () => {
   it('draw an uncertainty ring of the right size in Mars metres', () => {
     const ring = helpers.uncertaintyRing(stations[0], 75)!
@@ -121,6 +151,13 @@ describe('interface helpers', () => {
     expect(helpers.latLonToCell(helpers.cellToLatLon(5, 7))).toEqual({ row: 5, col: 7 })
     expect(helpers.sample(helpers.cellToLatLon(0, 3))?.heightM).toBe(6)
     expect(helpers.latLonToCell({ lat: 0, lon: 0 })).toBeNull()
+  })
+
+  it('find the nearest station in a straight line on Mars', () => {
+    const near = (lon: number) => helpers.nearestStationId(stations, { lat: stations[0].lat, lon })
+    expect(near(stations[0].lon + 0.0001)).toBe('B')
+    expect(near(stations[1].lon - 0.0001)).toBe('S1')
+    expect(helpers.nearestStationId([], stations[0])).toBeNull()
   })
 
   it('build route B params from a compare preset, changing one thing', () => {

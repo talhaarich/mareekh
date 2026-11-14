@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useInteraction } from '../map/interaction'
+import { useView } from '../state/view'
 
 interface AppShellProps {
   /** Left panel: map controls */
@@ -22,6 +23,7 @@ type Drawer = 'left' | 'right' | null
  * Wide screens show all four. Narrow screens show the map with the two panels as slide-over drawers.
  */
 export default function AppShell({ left, right, children, regionName, notice }: AppShellProps) {
+  const setMode = useView((s) => s.setMode)
   const [open, setOpen] = useState<Drawer>(null)
   const toggle = (d: Exclude<Drawer, null>) => setOpen((cur) => (cur === d ? null : d))
 
@@ -45,6 +47,13 @@ export default function AppShell({ left, right, children, regionName, notice }: 
         </div>
         <div className="flex items-center gap-2">
           <span className="hidden text-xs text-fg-muted md:inline">Planning and rehearsal. Not mission-critical.</span>
+          <button
+            type="button"
+            onClick={() => setMode('eva')}
+            className="rounded border border-route px-2 py-1 text-xs font-semibold text-route"
+          >
+            EVA mode
+          </button>
           <button
             type="button"
             onClick={() => toggle('left')}

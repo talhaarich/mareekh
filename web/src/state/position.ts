@@ -106,6 +106,26 @@ export function selectFixPrompt(state: Pick<PositionState, 'elapsedS' | 'uncerta
   return t.length > 0 ? pointAt(t, state.elapsedS).stationId : null
 }
 
+/**
+ * The next station the walk is heading for: the first station along the timeline after `elapsedS`,
+ * skipping the one the walk is at now. 'B' on the way home; null when the walk has finished or there
+ * is no plan. Use as a selector: `usePosition(selectNextStop)`.
+ */
+export function selectNextStop(state: Pick<PositionState, 'elapsedS'>): string | null {
+  const t = timeline()
+  if (t.length === 0 || state.elapsedS >= t[t.length - 1].elapsedS) return null
+  const here = pointAt(t, state.elapsedS).stationId
+  for (const p of t) {
+    if (p.elapsedS > state.elapsedS && p.stationId !== null && p.stationId !== here) return p.stationId
+  }
+  return null
+}
+
+/** Seconds left before `timeLimitS`, measured from the simulated elapsed time. Negative once over the limit. */
+export function selectTimeLeftS(state: Pick<PositionState, 'elapsedS'>, timeLimitS: number): number {
+  return timeLimitS - state.elapsedS
+}
+
 // Put the estimate on base once stations have loaded (it is NaN before that).
 useData.subscribe((s, prev) => {
   if (s.loaded && !prev.loaded) usePosition.getState().reset()

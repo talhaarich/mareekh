@@ -44,6 +44,20 @@ export function bearingDeg(from: LatLon, to: LatLon): number {
   return mars.bearingDeg(from, to)
 }
 
+/** Id of the station nearest to `p` in a straight line on Mars; null when the list is empty. */
+export function nearestStationId(stations: { id: string; lat: number; lon: number }[], p: LatLon): string | null {
+  let best: string | null = null
+  let bestM = Infinity
+  for (const s of stations) {
+    const d = distanceM(p, s)
+    if (d < bestM) {
+      bestM = d
+      best = s.id
+    }
+  }
+  return best
+}
+
 /** Points around the uncertainty ring. Drawing resolution only. */
 const RING_POINTS = 64
 

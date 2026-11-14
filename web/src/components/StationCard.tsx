@@ -78,6 +78,7 @@ function Card({ id }: { id: string }) {
       </dl>
       <p className="text-[10px] leading-tight text-fg-muted">
         Range and bearing: straight line on the Mars sphere from the station list. Walk home: route model.
+        Time at station: station list.
         {station.sol !== null ? ` Position taken from rover sol ${station.sol}.` : ' Position has no rover source.'}
       </p>
       {station.photos.length > 0 ? (

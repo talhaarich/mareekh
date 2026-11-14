@@ -110,6 +110,9 @@ export default function PlanPanel() {
               {status.label}
             </div>
             <p className="text-sm text-fg">{result.reason}</p>
+            <p className="text-[10px] leading-tight text-fg-muted">
+              Route model. Time limit from the slider below; caution margin caution_spare_s from assumptions.json.
+            </p>
           </>
         ) : gridError ? (
           <p role="status" className="text-sm text-fg-muted">
@@ -180,6 +183,9 @@ export default function PlanPanel() {
                 ))}
               </tbody>
             </table>
+            <p className="mt-1 text-[10px] leading-tight text-fg-muted">
+              Times and distances: route model over the height grid, team speed model.
+            </p>
           </section>
         </>
       )}

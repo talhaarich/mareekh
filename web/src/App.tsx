@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import AppShell from './components/AppShell'
 import LayerControls from './components/LayerControls'
+import LimitsPanel from './components/LimitsPanel'
 import PlanPanel from './components/PlanPanel'
+import SafetyPanel from './components/SafetyPanel'
 import { usePlanner } from './components/planParams'
 import MissionMap from './map/MissionMap'
 import { useLayerAvailability } from './map/useLayerAvailability'
@@ -28,7 +30,13 @@ export default function App() {
   return (
     <AppShell
       left={<LayerControls />}
-      right={<PlanPanel />}
+      right={
+        <div className="space-y-8">
+          <PlanPanel />
+          <SafetyPanel />
+          <LimitsPanel />
+        </div>
+      }
       regionName={manifest?.region.name}
       notice={loadError ? `Data could not be loaded: ${loadError}` : undefined}
     >

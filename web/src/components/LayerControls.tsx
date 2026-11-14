@@ -131,7 +131,7 @@ export default function LayerControls() {
           )
         })}
         <label className={`block text-xs ${overlay === null ? 'text-fg-muted/60' : 'text-fg-muted'}`}>
-          Strength: {Math.round(overlayStrength * 100)} %
+          Strength: {Math.round(overlayStrength * 100)} % (display setting)
           <input
             type="range"
             min={0}

@@ -34,3 +34,36 @@ export function fmtDose(mSv: number): string {
 export function fmtBearing(deg: number): string {
   return Number.isFinite(deg) ? `${Math.round(deg)}°` : DASH
 }
+
+/** Kelvin (data unit) to Celsius for display (CONVENTIONS.md). A unit conversion, not a physical constant. */
+const KELVIN_AT_0C = 273.15
+
+export function fmtTempC(kelvin: number): string {
+  if (!Number.isFinite(kelvin)) return DASH
+  const c = kelvin - KELVIN_AT_0C
+  return `${c < 0 ? '−' : ''}${Math.abs(c).toFixed(1)} °C`
+}
+
+/** Pascals (data unit) to millibar for display: divide by 100 (CONVENTIONS.md). */
+export function fmtPressureMbar(pa: number): string {
+  return Number.isFinite(pa) ? `${(pa / 100).toFixed(2)} mbar` : DASH
+}
+
+/** Dust optical depth (tau) has no unit. */
+export function fmtTau(tau: number): string {
+  return Number.isFinite(tau) ? tau.toFixed(2) : DASH
+}
+
+/** An assumption's value with its unit. Seconds read as hours and minutes; an empty unit says so. */
+export function fmtAssumption(value: number, unit: string): string {
+  if (unit === 's') return fmtDuration(value)
+  return unit === '' ? `${value} (no unit)` : `${value} ${unit}`
+}
+
+/** Latitude and longitude in degrees, north and east positive (Jezero is about 18.4 N, 77.4 E). */
+export function fmtLatLon(lat: number, lon: number): string {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return DASH
+  const ns = lat >= 0 ? 'N' : 'S'
+  const ew = lon >= 0 ? 'E' : 'W'
+  return `${Math.abs(lat).toFixed(5)}° ${ns}, ${Math.abs(lon).toFixed(5)}° ${ew}`
+}

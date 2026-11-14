@@ -5,7 +5,7 @@ import * as helpers from '../lib/helpers'
 import { planWalk } from '../lib/plan'
 import { assumptionValue, parseAssumptions, useData, type Station } from './data'
 import { usePlan } from './plan'
-import { usePosition } from './position'
+import { selectFixPrompt, usePosition } from './position'
 
 const examples = new URL('../../../examples/data/', import.meta.url)
 const assumptions = parseAssumptions(JSON.parse(await readFile(new URL('jezero/assumptions.json', examples), 'utf-8')))
@@ -74,7 +74,33 @@ describe('position', () => {
   })
 })
 
+describe('fix prompt', () => {
+  const prompt = () => selectFixPrompt(usePosition.getState())
+
+  it('asks for a fix on reaching a station after drifting, and stops asking once fixed', () => {
+    expect(prompt()).toBeNull() // at base, no drift yet
+    usePosition.getState().simulateTo(legS / 2)
+    expect(prompt()).toBeNull() // walking, not at a landmark
+    usePosition.getState().simulateTo(legS)
+    expect(prompt()).toBe('S1') // arrived
+    usePosition.getState().simulateTo(legS + 300)
+    expect(prompt()).toBe('S1') // still there, working
+    usePosition.getState().fixAt('S1')
+    expect(prompt()).toBeNull()
+    usePosition.getState().simulateTo(1e6)
+    expect(prompt()).toBe('B') // home again, drifted on the way back
+  })
+})
+
 describe('interface helpers', () => {
+  it('draw an uncertainty ring of the right size in Mars metres', () => {
+    const ring = helpers.uncertaintyRing(stations[0], 75)!
+    const coords = ring.geometry.coordinates[0]
+    expect(coords[0]).toEqual(coords[coords.length - 1]) // closed
+    for (const [lon, lat] of coords) expect(helpers.distanceM(stations[0], { lat, lon })).toBeCloseTo(75, 6)
+    expect(helpers.uncertaintyRing(stations[0], 0)).toBeNull()
+  })
+
   it('give range and bearing to base on Mars', () => {
     const north = { lat: 19, lon: stations[0].lon }
     expect(helpers.distanceM({ lat: 18, lon: 77.45 }, { lat: 19, lon: 77.45 }) / 1000).toBeCloseTo(59.27, 1)
@@ -88,6 +114,13 @@ describe('interface helpers', () => {
     expect(helpers.latLonToCell(helpers.cellToLatLon(5, 7))).toEqual({ row: 5, col: 7 })
     expect(helpers.sample(helpers.cellToLatLon(0, 3))?.heightM).toBe(6)
     expect(helpers.latLonToCell({ lat: 0, lon: 0 })).toBeNull()
+  })
+
+  it('build route B params from a compare preset, changing one thing', () => {
+    const plan = { slopeLimitDeg: 15, carriedKg: 10, timeLimitS: 21600 }
+    expect(helpers.compareParams('off', plan)).toBeNull()
+    expect(helpers.compareParams('steeper', plan)).toEqual({ ...plan, objective: 'time', slopeLimitDeg: assumptionValue(assumptions, 'slope_limit_hard_deg') })
+    expect(helpers.compareParams('shortest', plan)).toEqual({ ...plan, objective: 'distance' })
   })
 
   it('throw a clear error before the grid has loaded', () => {

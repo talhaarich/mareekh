@@ -95,3 +95,13 @@ export const usePosition = create<PositionState>()((set, get) => ({
     }))
   },
 }))
+
+/**
+ * Station to prompt a fix at, or null: the walk is at a station (arriving or working there) and has
+ * drifted since the last fix. Use as a selector: `usePosition(selectFixPrompt)`.
+ */
+export function selectFixPrompt(state: Pick<PositionState, 'elapsedS' | 'uncertaintyM'>): string | null {
+  if (!(state.uncertaintyM > 0)) return null
+  const t = timeline()
+  return t.length > 0 ? pointAt(t, state.elapsedS).stationId : null
+}

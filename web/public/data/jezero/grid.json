@@ -1,15 +1,14 @@
 {
   "width": 400,
   "height": 300,
-  "res_m": 20,
+  "res_m": 20.0,
   "bounds": [
-    18.41,
-    77.38,
-    18.512,
-    77.522
+    18.393988,
+    77.379763,
+    18.495212,
+    77.522037
   ],
-  "nodata": -9999,
+  "nodata": -9999.0,
   "dem": "dem.bin",
-  "slope": "slope.bin",
-  "_note": "Example only. Real corners are set by Sadia. Binary grids are not included at this size; see examples/data/tiny."
+  "slope": "slope.bin"
 }

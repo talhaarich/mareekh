@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { describe, expect, it } from 'vitest'
 import { parseAssumptions } from '../state/data'
-import { blockedMask, NEIGHBOURS, neighbourIndex, stepTimeS, vmaxFromAssumptions, walkSpeedMs, type SpeedModel } from './cost'
+import { blockedMask, NEIGHBOURS, neighbourIndex, speedModelFromAssumptions, stepTimeS, vmaxFromAssumptions, walkSpeedMs } from './cost'
 import { cellIndex, loadGrid, type FetchFile } from './grid'
 
 const examples = new URL('../../../examples/data/', import.meta.url)
@@ -10,16 +10,16 @@ const fromDisk: FetchFile = async (name) => new Response(await readFile(new URL(
 const assumptions = parseAssumptions(JSON.parse(await readFile(new URL('jezero/assumptions.json', examples), 'utf-8')))
 const vmax = vmaxFromAssumptions(assumptions)
 
-// Test values for the curve shape, from HOW_IT_WORKS (Tobler). The app gets them from assumptions.json once they are added.
-const model: SpeedModel = { vmaxMs: vmax, decay: 3.5, optimumGrade: -0.05 }
+const model = speedModelFromAssumptions(assumptions)
 
 const tiny = await loadGrid(fromDisk) // height = 2 m per column going east, flat north-south, slope 5.7106 deg everywhere
 const { meta } = tiny
 const at = (r: number, c: number) => cellIndex(meta, r, c)
 
-describe('vmax', () => {
-  it('is the long-walk speed from assumptions.json', () => {
+describe('speed model', () => {
+  it('uses the long-walk speed from assumptions.json and the Tobler curve shape', () => {
     expect(vmax).toBe(0.75)
+    expect(model).toEqual({ vmaxMs: 0.75, decay: 3.5, optimumGrade: -0.05 })
   })
 })
 

@@ -47,7 +47,7 @@ Sadia downloads it. Murshad processes it.
   Base is not a rover stop. Its position is set by hand near the landing site.
 - **`photos_for_sol`** queries the raw images feed for that sol, prefers navigation and Mastcam-Z cameras, skips thumbnails, keeps at most 3 and attaches a credit to each.
 - **`conditions_from_meda`** filters MEDA to one sol, drops missing values, and takes the median of air temperature, pressure and dust opacity. It raises an error outside 150–300 K or at 1,500 Pa and above. Output: `conditions.json`, with source and caveat.
-- **`assumptions.json`** has 18 entries: key, value, unit, source, url, and kind (published or team). These are the only numbers the engine may use.
+- **`assumptions.json`** has 20 entries: key, value, unit, source, url, and kind (published or team). These are the only numbers the engine may use.
 - **Submission:** data log, citations, AI-use statement, project page, video script.
 
 ## 4. Engine (Talha)
@@ -59,7 +59,7 @@ Sadia downloads it. Murshad processes it.
 - **Flat distance:** 20 m to a side neighbour, 28.3 m to a diagonal one.
 - **Grade:** height change ÷ flat distance. Up and down differ, so A→B costs something different from B→A.
 - **Blocked** if the target cell's slope (from `slope.bin`) is over the limit.
-- **Speed:** a hiking curve, fastest on a slight downhill and dropping fast on steep grades. The prototype used `v = vmax · e^(−3.5·|grade + 0.05|)`. vmax comes from `assumptions.json` (1.0 m/s for short walks, 0.75 m/s for long ones). Pick one and label it.
+- **Speed:** a hiking curve, fastest on a slight downhill and dropping fast on steep grades: `v = vmax · e^(−3.5·(|grade + 0.05| − 0.05))`, so flat ground is exactly vmax. (The prototype used `v = vmax · e^(−3.5·|grade + 0.05|)`, which made flat ground 0.84·vmax.) vmax is `walk_speed_long_ms`, 0.75 m/s, because the walk is several hours; the shape numbers are `speed_decay_per_grade` and `speed_optimum_grade`. All three come from `assumptions.json`.
 - **Time:** 3D step length ÷ speed.
 
 **Route finder.** Dijkstra on time, with a binary heap, in a Web Worker. Distances are stored as 64-bit floats. At about 120k cells, a search takes milliseconds. It returns the path as lat/lon points.

@@ -9,8 +9,8 @@ export interface LabelItem {
   lat: number
   lon: number
   text: string
-  /** If set, clicking the label opens that station's card. */
-  stationId?: string
+  /** If set, the label is a button: e.g. open that station's card or that pin's note. */
+  onSelect?: () => void
 }
 
 interface Props {
@@ -18,7 +18,6 @@ interface Props {
   containerRef: RefObject<HTMLDivElement | null>
   ready: boolean
   items: LabelItem[]
-  onSelectStation: (id: string) => void
 }
 
 const LABEL_HEIGHT = 20
@@ -42,7 +41,7 @@ function relativeRect(el: Element, origin: DOMRect): Rect {
  * Labels with leader lines, laid out in screen space on every pan and zoom.
  * Anything marked data-map-obstacle (cards, the colour key) and MapLibre's own controls are kept clear.
  */
-export default function MapLabels({ mapRef, containerRef, ready, items, onSelectStation }: Props) {
+export default function MapLabels({ mapRef, containerRef, ready, items }: Props) {
   const [placed, setPlaced] = useState<PlacedLabel[]>([])
   const frame = useRef(0)
 
@@ -108,13 +107,13 @@ export default function MapLabels({ mapRef, containerRef, ready, items, onSelect
         if (!item) return null
         const box = 'absolute flex items-center rounded border border-line bg-panel/90 px-1.5 text-xs text-fg'
         const style = { left: p.x, top: p.y, width: p.w, height: p.h }
-        return item.stationId ? (
+        return item.onSelect ? (
           <button
             key={p.id}
             type="button"
             style={style}
             className={`${box} pointer-events-auto cursor-pointer hover:border-fg-muted`}
-            onClick={() => onSelectStation(item.stationId as string)}
+            onClick={item.onSelect}
           >
             <span className="truncate">{item.text}</span>
           </button>

@@ -29,3 +29,6 @@ pipeline/out/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Personal AI-assistant brief, one per person
+claude.local.md

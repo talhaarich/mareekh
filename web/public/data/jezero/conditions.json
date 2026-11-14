@@ -1,0 +1,8 @@
+{
+  "sol": 0,
+  "tau": 0.4,
+  "air_temp_k": 211.0,
+  "pressure_pa": 730.0,
+  "source": "Example values, not measured",
+  "caveat": "Replace with values from the rover weather data."
+}

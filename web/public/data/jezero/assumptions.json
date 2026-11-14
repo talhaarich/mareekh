@@ -1,0 +1,146 @@
+[
+  {
+    "key": "slope_limit_plan_deg",
+    "value": 15,
+    "unit": "deg",
+    "source": "Published traverse-planning limit based on the Apollo life-support backpack",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "slope_limit_hard_deg",
+    "value": 20,
+    "unit": "deg",
+    "source": "CU Boulder NaviGATOR planner, citing NASA EVA concept of operations",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "walk_speed_long_ms",
+    "value": 0.75,
+    "unit": "m/s",
+    "source": "2.7 km/h for walks over one hour, Apollo 15 walk-back modelling",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "walk_speed_short_ms",
+    "value": 1.0,
+    "unit": "m/s",
+    "source": "3.6 km/h for short walks, same study",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "work_rate_walk_kj_h",
+    "value": 1030,
+    "unit": "kJ/h",
+    "source": "NASA standard, Apollo surface average",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "work_rate_station_kj_h",
+    "value": 600,
+    "unit": "kJ/h",
+    "source": "No source",
+    "url": "",
+    "kind": "team"
+  },
+  {
+    "key": "suited_mass_kg",
+    "value": 200,
+    "unit": "kg",
+    "source": "Person plus suit, round figure",
+    "url": "",
+    "kind": "team"
+  },
+  {
+    "key": "mars_gravity_ms2",
+    "value": 3.71,
+    "unit": "m/s2",
+    "source": "Standard value",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "walk_back_max_m",
+    "value": 10000,
+    "unit": "m",
+    "source": "NASA Constellation planning",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "dose_rate_msv_h",
+    "value": 0.028,
+    "unit": "mSv/h",
+    "source": "Curiosity RAD at Gale crater, 0.64 mSv/day. A Gale measurement applied to Jezero.",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "tau_normal",
+    "value": 0.4,
+    "unit": "",
+    "source": "Perseverance weather instrument, typical 0.3 to 0.5",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "tau_storm",
+    "value": 1.0,
+    "unit": "",
+    "source": "Perseverance, January 2022 storm",
+    "url": "",
+    "kind": "published"
+  },
+  {
+    "key": "station_dwell_s",
+    "value": 1200,
+    "unit": "s",
+    "source": "No source",
+    "url": "",
+    "kind": "team"
+  },
+  {
+    "key": "eva_time_limit_s",
+    "value": 21600,
+    "unit": "s",
+    "source": "No source found yet",
+    "url": "",
+    "kind": "team"
+  },
+  {
+    "key": "caution_spare_s",
+    "value": 2700,
+    "unit": "s",
+    "source": "No source",
+    "url": "",
+    "kind": "team"
+  },
+  {
+    "key": "turnback_reserve_s",
+    "value": 1800,
+    "unit": "s",
+    "source": "No source",
+    "url": "",
+    "kind": "team"
+  },
+  {
+    "key": "drift_fraction",
+    "value": 0.05,
+    "unit": "",
+    "source": "Position error growth per distance walked. Placeholder.",
+    "url": "",
+    "kind": "team"
+  },
+  {
+    "key": "mars_radius_m",
+    "value": 3396190,
+    "unit": "m",
+    "source": "Standard Mars reference sphere",
+    "url": "",
+    "kind": "published"
+  }
+]

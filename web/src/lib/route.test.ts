@@ -45,10 +45,10 @@ describe('the three test grids (brief, task 5)', () => {
     const east = findRoute(g, blocked, model, cellIndex(g.meta, 5, 0), cellIndex(g.meta, 5, 9))
     expect(east.ok).toBe(true)
     expect(east.cells).toHaveLength(10)
-    expect(east.timeS).toBeCloseTo(9 * flatSide, 9)
+    expect(east.cost).toBeCloseTo(9 * flatSide, 9)
     const diag = findRoute(g, blocked, model, cellIndex(g.meta, 0, 0), cellIndex(g.meta, 9, 9))
-    expect(diag.timeS).toBeCloseTo(9 * flatDiag, 9)
-    checkRoute(g, blocked, diag.cells, diag.timeS)
+    expect(diag.cost).toBeCloseTo(9 * flatDiag, 9)
+    checkRoute(g, blocked, diag.cells, diag.cost)
   })
 
   it('wall with a gap: goes through the gap', () => {
@@ -60,8 +60,8 @@ describe('the three test grids (brief, task 5)', () => {
     const route = findRoute(g, blocked, model, cellIndex(g.meta, 2, 1), cellIndex(g.meta, 2, 8))
     expect(route.ok).toBe(true)
     expect(route.cells).toContain(cellIndex(g.meta, gapRow, 5))
-    expect(route.timeS).toBeGreaterThan(7 * flatSide) // longer than the straight line it can't take
-    checkRoute(g, blocked, route.cells, route.timeS)
+    expect(route.cost).toBeGreaterThan(7 * flatSide) // longer than the straight line it can't take
+    checkRoute(g, blocked, route.cells, route.cost)
   })
 
   it('walled in: no path in, and no path out', () => {
@@ -71,7 +71,7 @@ describe('the three test grids (brief, task 5)', () => {
     const blocked = blockedMask(g, LIMIT)
     const inside = cellIndex(g.meta, 5, 5)
     const outside = cellIndex(g.meta, 0, 0)
-    expect(findRoute(g, blocked, model, outside, inside)).toEqual({ ok: false, cells: [], timeS: Infinity })
+    expect(findRoute(g, blocked, model, outside, inside)).toEqual({ ok: false, cells: [], cost: Infinity })
     expect(findRoute(g, blocked, model, inside, outside).ok).toBe(false)
   })
 
@@ -92,13 +92,13 @@ describe('route time', () => {
     const east = cellIndex(tiny.meta, 3, 7)
     const up = findRoute(tiny, blocked, model, west, east)
     const down = findRoute(tiny, blocked, model, east, west)
-    expect(up.timeS).toBeGreaterThan(down.timeS)
-    checkRoute(tiny, blocked, up.cells, up.timeS)
+    expect(up.cost).toBeGreaterThan(down.cost)
+    checkRoute(tiny, blocked, up.cells, up.cost)
   })
 
   it('a route from a cell to itself is that cell, in 0 s', () => {
     const g = makeGrid(4, 4)
-    expect(findRoute(g, blockedMask(g, LIMIT), model, 5, 5)).toEqual({ ok: true, cells: [5], timeS: 0 })
+    expect(findRoute(g, blockedMask(g, LIMIT), model, 5, 5)).toEqual({ ok: true, cells: [5], cost: 0 })
   })
 
   it('matches a brute-force search on hilly ground with walls', () => {
@@ -111,7 +111,7 @@ describe('route time', () => {
     const blocked = blockedMask(g, LIMIT)
     const source = 0
     g.slope[source] = 0
-    const { timeS } = search(g, blocked, model, source)
+    const { cost: timeS } = search(g, blocked, model, source)
 
     // Bellman-Ford: relax every edge until nothing changes.
     const best = new Float64Array(g.dem.length).fill(Infinity)
@@ -145,10 +145,10 @@ describe('reverse search (for the walk-home field)', () => {
     const base = cellIndex(g.meta, 3, 0)
     const home = search(g, blocked, model, base, { reverse: true })
     for (const cell of [cellIndex(g.meta, 0, 7), cellIndex(g.meta, 5, 4), cellIndex(g.meta, 3, 1)]) {
-      expect(home.timeS[cell]).toBeCloseTo(findRoute(g, blocked, model, cell, base).timeS, 9)
+      expect(home.cost[cell]).toBeCloseTo(findRoute(g, blocked, model, cell, base).cost, 9)
     }
     const far = cellIndex(g.meta, 3, 7)
-    expect(home.timeS[far]).toBeLessThan(findRoute(g, blocked, model, base, far).timeS) // home is downhill
+    expect(home.cost[far]).toBeLessThan(findRoute(g, blocked, model, base, far).cost) // home is downhill
   })
 })
 

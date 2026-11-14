@@ -9,6 +9,7 @@ import { assumptionValue, useData } from '../state/data'
 import * as grid from './grid'
 import * as mars from './mars'
 import type { LatLon } from './mars'
+import type { PlanParams } from './plan'
 
 export { walkHomeS } from '../state/plan'
 
@@ -60,4 +61,19 @@ export function uncertaintyRing(center: LatLon, radiusM: number): Feature<Polygo
   }
   ring.push(ring[0])
   return { type: 'Feature', properties: { radiusM }, geometry: { type: 'Polygon', coordinates: [ring] } }
+}
+
+/** Compare presets (PLANNER_API): route B changes one thing from the plan. */
+export type ComparePreset = 'off' | 'steeper' | 'shortest'
+
+/**
+ * Route B's params for a preset, from the plan's params; null for "off".
+ * steeper: fastest, slope limit = slope_limit_hard_deg. shortest: objective "distance", the plan's slope limit.
+ */
+export function compareParams(preset: ComparePreset, plan: PlanParams): PlanParams | null {
+  if (preset === 'off') return null
+  if (preset === 'steeper') {
+    return { ...plan, objective: 'time', slopeLimitDeg: assumptionValue(useData.getState().assumptions, 'slope_limit_hard_deg') }
+  }
+  return { ...plan, objective: 'distance' }
 }

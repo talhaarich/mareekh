@@ -15,7 +15,7 @@ import { assumptionValue, type Assumption, type Station } from '../state/data'
 import { blockedMask, speedModelFromAssumptions, stepBetween } from './cost'
 import { cellToLatLon, latLonToCell, type Grid } from './grid'
 import type { LatLon } from './mars'
-import { findRoute, search } from './route'
+import { findRoute, search, type Objective } from './route'
 
 export interface PlanParams {
   /** Default from assumptions: slope_limit_plan_deg. */
@@ -24,6 +24,8 @@ export interface PlanParams {
   carriedKg: number
   /** Default from assumptions: eva_time_limit_s. */
   timeLimitS: number
+  /** What each leg's route minimises: "time" (fastest, the default) or "distance" (shortest). */
+  objective?: Objective
 }
 
 export interface Leg {
@@ -72,7 +74,7 @@ export function walkHomeTimes(grid: Grid, assumptions: Assumption[], base: LatLo
   if (!cell) return new Float64Array(grid.dem.length).fill(Infinity)
   const blocked = blockedMask(grid, params.slopeLimitDeg)
   const model = speedModelFromAssumptions(assumptions)
-  return search(grid, blocked, model, cell.row * grid.meta.width + cell.col, { reverse: true }).timeS
+  return search(grid, blocked, model, cell.row * grid.meta.width + cell.col, { reverse: true }).cost
 }
 
 /** The walk-home field as the worker sends it: Float32, grid layout, Infinity when unreachable. */
@@ -87,8 +89,12 @@ interface RoutePoint {
   elapsedS: number
 }
 
-/** Plans the whole walk. `stations` is in walking order and starts with base. */
+/**
+ * Plans the whole walk. `stations` is in walking order and starts with base. `params.objective` picks each
+ * leg's path: fastest (default) or shortest. Times always come from the speed model along the chosen path.
+ */
 export function planWalk(grid: Grid, assumptions: Assumption[], stations: Station[], params: PlanParams): PlanResult {
+  const objective = params.objective ?? 'time'
   if (stations.length < 2) throw new Error('A plan needs base and at least one station')
   const a = (key: string) => assumptionValue(assumptions, key)
   const walkKJperS = a('work_rate_walk_kj_h') / 3600
@@ -118,7 +124,7 @@ export function planWalk(grid: Grid, assumptions: Assumption[], stations: Statio
     const toI = (i + 1) % stations.length
     const from = stations[fromI]
     const to = stations[toI]
-    const route = cells[fromI] >= 0 && cells[toI] >= 0 ? findRoute(grid, blocked, model, cells[fromI], cells[toI]) : null
+    const route = cells[fromI] >= 0 && cells[toI] >= 0 ? findRoute(grid, blocked, model, cells[fromI], cells[toI], objective) : null
 
     if (!route || !route.ok) {
       legs.push({ fromId: from.id, toId: to.id, ok: false, distanceM: Infinity, timeS: Infinity, climbM: Infinity, energyKJ: Infinity, path: [] })
@@ -133,11 +139,13 @@ export function planWalk(grid: Grid, assumptions: Assumption[], stations: Statio
     }
 
     let distanceM = 0
+    let timeS = 0
     let climbM = 0
     const path: LatLon[] = [{ lat: from.lat, lon: from.lon }]
     for (let j = 1; j < route.cells.length; j++) {
       const s = stepBetween(grid, blocked, model, route.cells[j - 1], route.cells[j])
       distanceM += s.lengthM
+      timeS += s.timeS
       if (s.riseM > 0) climbM += s.riseM
       const centre = cellToLatLon(grid.meta, Math.floor(route.cells[j] / w), route.cells[j] % w)
       path.push(centre)
@@ -152,9 +160,9 @@ export function planWalk(grid: Grid, assumptions: Assumption[], stations: Statio
       toId: to.id,
       ok: true,
       distanceM,
-      timeS: route.timeS,
+      timeS,
       climbM,
-      energyKJ: route.timeS * walkKJperS + (liftN * climbM) / 1000,
+      energyKJ: timeS * walkKJperS + (liftN * climbM) / 1000,
       path,
     })
 

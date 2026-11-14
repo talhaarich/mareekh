@@ -60,6 +60,11 @@ export function fmtAssumption(value: number, unit: string): string {
   return unit === '' ? `${value} (no unit)` : `${value} ${unit}`
 }
 
+/** Position uncertainty radius, e.g. "± 12 m". */
+export function fmtUncertainty(metres: number): string {
+  return Number.isFinite(metres) ? `± ${Math.round(metres)} m` : DASH
+}
+
 /** Latitude and longitude in degrees, north and east positive (Jezero is about 18.4 N, 77.4 E). */
 export function fmtLatLon(lat: number, lon: number): string {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return DASH

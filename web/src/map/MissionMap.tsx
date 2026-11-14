@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import MapGL, { Layer, Marker, NavigationControl, Source } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
-import type { Feature, LineString } from 'geojson'
+import type { Feature, LineString, Polygon } from 'geojson'
 import type { StyleSpecification } from 'maplibre-gl'
 import PinEditor from '../components/PinEditor'
 import StationCard from '../components/StationCard'
 import { fmtDuration } from '../components/format'
 import { dataUrl } from '../lib/dataUrl'
+import { uncertaintyRing } from '../lib/helpers'
 import { useData, type LegendItem } from '../state/data'
 import { usePins } from '../state/pins'
 import { usePlan } from '../state/plan'
+import { usePosition } from '../state/position'
 import { useView } from '../state/view'
 import { useInteraction } from './interaction'
 import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './layers'
@@ -86,6 +88,22 @@ function RouteLayer() {
   )
 }
 
+/** The simulated position's uncertainty ring, in metres on Mars, drawn in the route colour. */
+function UncertaintyRingLayer({ center, radiusM }: { center: { lat: number; lon: number }; radiusM: number }) {
+  const routeColor = useMemo(() => readToken('--color-route'), [])
+  const data = useMemo(() => {
+    const ring = uncertaintyRing(center, radiusM)
+    const features: Feature<Polygon>[] = ring ? [ring] : []
+    return { type: 'FeatureCollection' as const, features }
+  }, [center, radiusM])
+  return (
+    <Source id="mm-uncertainty" type="geojson" data={data}>
+      <Layer id="mm-uncertainty-fill" type="fill" paint={{ 'fill-color': routeColor, 'fill-opacity': 0.15 }} />
+      <Layer id="mm-uncertainty-line" type="line" paint={{ 'line-color': routeColor, 'line-width': 1.5, 'line-dasharray': [2, 2] }} />
+    </Source>
+  )
+}
+
 export default function MissionMap() {
   const mapRef = useRef<MapRef | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -101,6 +119,11 @@ export default function MissionMap() {
   const setPinDropType = useInteraction((s) => s.setPinDropType)
   const editPin = useInteraction((s) => s.editPin)
   const flyTarget = useInteraction((s) => s.flyTarget)
+  const estimate = usePosition((s) => s.estimate)
+  const uncertaintyM = usePosition((s) => s.uncertaintyM)
+  // The position shows once a rehearsal has started (before that it sits on base).
+  const walkStarted = usePosition((s) => s.elapsedS > 0 || s.fixes.length > 0)
+  const showPosition = walkStarted && Number.isFinite(estimate.lat) && Number.isFinite(estimate.lon)
 
   const baseView = useView((s) => s.baseView)
   const overlay = useView((s) => s.overlay)
@@ -167,6 +190,9 @@ export default function MissionMap() {
     for (const p of pins) {
       items.push({ id: `pin-${p.id}`, lat: p.lat, lon: p.lon, text: pinLabelText(p), onSelect: () => editPin(p.id) })
     }
+    if (showPosition) {
+      items.push({ id: 'position', lat: estimate.lat, lon: estimate.lon, text: 'Simulated position' })
+    }
     if (turnBack) {
       items.push({
         id: 'turnback',
@@ -176,7 +202,7 @@ export default function MissionMap() {
       })
     }
     return items
-  }, [stations, pins, turnBack, selectStation, editPin])
+  }, [stations, pins, turnBack, selectStation, editPin, showPosition, estimate])
 
   const viewMissing = activeView !== null && available[activeView.id] === false
 
@@ -226,6 +252,7 @@ export default function MissionMap() {
           ))}
 
         <RouteLayer />
+        {showPosition && <UncertaintyRingLayer center={estimate} radiusM={uncertaintyM} />}
 
         {stations.map((s) => (
           <Marker key={s.id} latitude={s.lat} longitude={s.lon} anchor="center">
@@ -273,6 +300,16 @@ export default function MissionMap() {
               role="img"
               aria-label="Turn-back point"
               className="h-4 w-4 rotate-45 border-2 border-caution bg-bg"
+            />
+          </Marker>
+        )}
+
+        {showPosition && (
+          <Marker latitude={estimate.lat} longitude={estimate.lon} anchor="center">
+            <div
+              role="img"
+              aria-label="Simulated position"
+              className="h-4 w-4 rounded-full border-2 border-fg bg-route shadow-[0_0_0_4px] shadow-route/30"
             />
           </Marker>
         )}

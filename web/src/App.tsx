@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import AppShell from './components/AppShell'
+import EvaScreen from './components/EvaScreen'
 import FieldNotes from './components/FieldNotes'
 import LayerControls from './components/LayerControls'
 import LimitsPanel from './components/LimitsPanel'
 import PlanPanel from './components/PlanPanel'
+import RehearsalPanel from './components/RehearsalPanel'
 import SafetyPanel from './components/SafetyPanel'
 import { usePlanner } from './components/planParams'
+import { useWalkClock } from './components/walkClock'
 import MissionMap from './map/MissionMap'
 import { useLayerAvailability } from './map/useLayerAvailability'
 import { useData } from './state/data'
+import { useView } from './state/view'
 
 export default function App() {
   const load = useData((s) => s.load)
@@ -26,7 +30,12 @@ export default function App() {
     if (manifest) void checkLayers(manifest)
   }, [manifest, checkLayers])
 
+  // Both run above the two screens, so planning and the rehearsal clock carry on in EVA mode.
   usePlanner()
+  useWalkClock()
+
+  const mode = useView((s) => s.mode)
+  if (mode === 'eva') return <EvaScreen />
 
   return (
     <AppShell
@@ -39,6 +48,7 @@ export default function App() {
       right={
         <div className="space-y-8">
           <PlanPanel />
+          <RehearsalPanel />
           <SafetyPanel />
           <LimitsPanel />
         </div>

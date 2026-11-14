@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { PlanResult } from '../lib/plan'
 import { useInteraction } from '../map/interaction'
 import { assumptionValue, useData, type Assumption } from '../state/data'
 import { usePlan } from '../state/plan'
@@ -13,13 +12,8 @@ import {
   fmtSignedDuration,
 } from './format'
 import { usePlanParams } from './planParams'
+import { STATUS_STYLE } from './status'
 
-// Cockpit status colours: the only place red, amber and green are used on this panel.
-const STATUS_STYLE: Record<PlanResult['status'], { label: string; cls: string }> = {
-  go: { label: 'GO', cls: 'border-go bg-go/15 text-go' },
-  caution: { label: 'CAUTION', cls: 'border-caution bg-caution/15 text-caution' },
-  nogo: { label: 'NO-GO', cls: 'border-nogo bg-nogo/15 text-nogo' },
-}
 
 function Tile({ label, value, source }: { label: string; value: string; source: string }) {
   return (

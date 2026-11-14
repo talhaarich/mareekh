@@ -37,11 +37,11 @@ describe('web/public/data/jezero matches CONTRACTS.md', () => {
   it('stations.json', async () => {
     expect(parseStations(await readJsonFile(`${dir}stations.json`))[0].id).toBe('B')
   })
-  it('assumptions.json has all 18 keys from docs/assumptions.md', async () => {
+  it('assumptions.json has every key listed in docs/assumptions.md', async () => {
     const a = parseAssumptions(await readJsonFile(`${dir}assumptions.json`))
     const doc = await readFile(new URL('docs/assumptions.md', repo), 'utf-8')
     const keys = [...doc.matchAll(/^\| `([a-z0-9_]+)` \|/gm)].map((x) => x[1])
-    expect(keys).toHaveLength(18)
+    expect(keys).toHaveLength(20)
     for (const k of keys) expect(() => assumptionValue(a, k)).not.toThrow()
   })
   it('conditions.json', async () => {

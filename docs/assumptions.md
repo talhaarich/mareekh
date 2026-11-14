@@ -11,6 +11,8 @@ labelled as assumptions on screen.
 | `slope_limit_hard_deg` | 20 | deg | CU Boulder NaviGATOR planner, citing NASA EVA concept of operations | published |
 | `walk_speed_long_ms` | 0.75 | m/s | 2.7 km/h for walks over one hour, Apollo 15 walk-back modelling | published |
 | `walk_speed_short_ms` | 1.0 | m/s | 3.6 km/h for short walks, same study | published |
+| `speed_decay_per_grade` | 3.5 |  | Tobler's hiking function (Tobler 1993, NCGIA Technical Report 93-1). Shape only. | published |
+| `speed_optimum_grade` | -0.05 |  | Same source: fastest on a 5% downhill. Grade is rise over run. | published |
 | `work_rate_walk_kj_h` | 1030 | kJ/h | NASA standard, Apollo surface average | published |
 | `work_rate_station_kj_h` | 600 | kJ/h | No source | team |
 | `suited_mass_kg` | 200 | kg | Person plus suit, round figure | team |
@@ -26,5 +28,6 @@ labelled as assumptions on screen.
 | `drift_fraction` | 0.05 |  | Position error growth per distance walked. Placeholder. | team |
 | `mars_radius_m` | 3396190 | m | Standard Mars reference sphere | published |
 
-The speed change with slope is a team model: a hiking-speed formula scaled so flat-ground speed
-matches the values above. The Santee load-carriage model is the better replacement if time allows.
+The speed change with slope is a team model: Tobler's hiking-speed formula scaled so flat-ground speed
+matches the values above: v = vmax · e^(−decay · (|grade − optimum| − |optimum|)), with decay =
+`speed_decay_per_grade` and optimum = `speed_optimum_grade`. The planner uses `walk_speed_long_ms` as vmax. The Santee load-carriage model is the better replacement if time allows.

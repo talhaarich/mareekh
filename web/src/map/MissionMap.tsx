@@ -142,7 +142,7 @@ export default function MissionMap() {
         id: 'turnback',
         lat: turnBack.position.lat,
         lon: turnBack.position.lon,
-        text: `Turn back by ${fmtDuration(turnBack.elapsedS)}`,
+        text: `Turn back by ${fmtDuration(turnBack.elapsedS)} (route model)`,
       })
     }
     return items

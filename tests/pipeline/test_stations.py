@@ -38,6 +38,15 @@ def test_last_drive_of_the_sol_wins():
     assert station_from_sol(WAYPOINTS, 10) == (18.4455, 77.4515)
 
 
+def test_new_site_at_end_of_sol_wins_over_a_higher_drive():
+    # Shape of real sol 409: drive 2746 at site 21, then an end-of-drive localization starts site 22 at drive 0.
+    waypoints = {"features": [
+        {"properties": {"sol": 409, "site": 21, "drive": 2746, "lat": 18.40, "lon": 77.40}},
+        {"properties": {"sol": 409, "site": 22, "drive": 0, "lat": 18.41, "lon": 77.41}},
+    ]}
+    assert station_from_sol(waypoints, 409) == (18.41, 77.41)
+
+
 def test_string_sol_and_geometry_fallback():
     assert station_from_sol(WAYPOINTS, 20) == (18.4470, 77.4530)
     assert station_from_sol(WAYPOINTS, 30) == (18.4480, 77.4560)  # (lat, lon) from [lon, lat]

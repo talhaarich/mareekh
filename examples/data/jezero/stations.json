@@ -1,0 +1,67 @@
+[
+  {
+    "id": "B",
+    "name": "Base",
+    "lat": 18.4446,
+    "lon": 77.4509,
+    "task": "Habitat. Start and end of the walk.",
+    "dwell_s": 0,
+    "sol": null,
+    "photos": [],
+    "_placeholder": false
+  },
+  {
+    "id": "S1",
+    "name": "Sample depot",
+    "lat": 18.45,
+    "lon": 77.405,
+    "task": "Collect the sample tubes left on the surface. Check each tube ID against the list.",
+    "dwell_s": 1200,
+    "sol": 653,
+    "photos": [
+      {
+        "url": "https://example.invalid/replace-with-real-rover-image.jpg",
+        "camera": "NAVCAM_LEFT",
+        "sol": 653,
+        "credit": "NASA/JPL-Caltech"
+      }
+    ],
+    "_placeholder": true
+  },
+  {
+    "id": "S2",
+    "name": "Delta base",
+    "lat": 18.458,
+    "lon": 77.4,
+    "task": "Photograph the layered scarp. Sample the lowest exposed layer.",
+    "dwell_s": 1200,
+    "sol": 423,
+    "photos": [
+      {
+        "url": "https://example.invalid/replace-with-real-rover-image.jpg",
+        "camera": "NAVCAM_LEFT",
+        "sol": 423,
+        "credit": "NASA/JPL-Caltech"
+      }
+    ],
+    "_placeholder": true
+  },
+  {
+    "id": "S3",
+    "name": "Delta top",
+    "lat": 18.47,
+    "lon": 77.39,
+    "task": "Sample boulders on the delta surface. Look back toward base for a radio check.",
+    "dwell_s": 1200,
+    "sol": null,
+    "photos": [
+      {
+        "url": "https://example.invalid/replace-with-real-rover-image.jpg",
+        "camera": "NAVCAM_LEFT",
+        "sol": 0,
+        "credit": "NASA/JPL-Caltech"
+      }
+    ],
+    "_placeholder": true
+  }
+]

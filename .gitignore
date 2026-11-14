@@ -1,0 +1,31 @@
+# Raw downloads never go in git
+data/raw/
+*.tif
+*.tiff
+*.img
+*.IMG
+*.aux.xml
+*.zip
+
+# Node
+node_modules/
+web/dist/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+
+# Pipeline scratch
+pipeline/build/
+pipeline/out/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

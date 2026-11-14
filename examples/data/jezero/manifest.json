@@ -1,0 +1,214 @@
+{
+  "region": {
+    "name": "Jezero Crater, western delta",
+    "bounds": [
+      18.41,
+      77.38,
+      18.512,
+      77.522
+    ],
+    "base": {
+      "lat": 18.4446,
+      "lon": 77.4509
+    }
+  },
+  "layers": [
+    {
+      "id": "satellite",
+      "name": "Satellite",
+      "group": "view",
+      "type": "image",
+      "url": "overlays/satellite.png",
+      "coordinates": [
+        [
+          77.38,
+          18.512
+        ],
+        [
+          77.522,
+          18.512
+        ],
+        [
+          77.522,
+          18.41
+        ],
+        [
+          77.38,
+          18.41
+        ]
+      ],
+      "legend": [],
+      "credit": "NASA/JPL-Caltech/MSSS/USGS (CTX mosaic)",
+      "caveat": "5 m per pixel. Rocks are not visible.",
+      "default": true
+    },
+    {
+      "id": "relief",
+      "name": "Relief",
+      "group": "view",
+      "type": "image",
+      "url": "overlays/relief.png",
+      "coordinates": [
+        [
+          77.38,
+          18.512
+        ],
+        [
+          77.522,
+          18.512
+        ],
+        [
+          77.522,
+          18.41
+        ],
+        [
+          77.38,
+          18.41
+        ]
+      ],
+      "legend": [],
+      "credit": "Derived from the CTX height map",
+      "caveat": "Shading only."
+    },
+    {
+      "id": "topo",
+      "name": "Topo",
+      "group": "view",
+      "type": "image",
+      "url": "overlays/topo.png",
+      "coordinates": [
+        [
+          77.38,
+          18.512
+        ],
+        [
+          77.522,
+          18.512
+        ],
+        [
+          77.522,
+          18.41
+        ],
+        [
+          77.38,
+          18.41
+        ]
+      ],
+      "legend": [],
+      "credit": "Derived from the CTX height map",
+      "caveat": "Contours every 10 m from 20 m data."
+    },
+    {
+      "id": "elevation",
+      "name": "Elevation",
+      "group": "view",
+      "type": "image",
+      "url": "overlays/elevation.png",
+      "coordinates": [
+        [
+          77.38,
+          18.512
+        ],
+        [
+          77.522,
+          18.512
+        ],
+        [
+          77.522,
+          18.41
+        ],
+        [
+          77.38,
+          18.41
+        ]
+      ],
+      "legend": [
+        {
+          "color": "#213899",
+          "label": "Low"
+        },
+        {
+          "color": "#d13829",
+          "label": "High"
+        }
+      ],
+      "credit": "Derived from the CTX height map",
+      "caveat": ""
+    },
+    {
+      "id": "minerals",
+      "name": "Minerals",
+      "group": "overlay",
+      "type": "image",
+      "url": "overlays/minerals.png",
+      "coordinates": [
+        [
+          77.38,
+          18.512
+        ],
+        [
+          77.522,
+          18.512
+        ],
+        [
+          77.522,
+          18.41
+        ],
+        [
+          77.38,
+          18.41
+        ]
+      ],
+      "legend": [
+        {
+          "color": "#28c8aa",
+          "label": "Example class A"
+        },
+        {
+          "color": "#e150be",
+          "label": "Example class B"
+        }
+      ],
+      "credit": "CRISM mineral map (Zenodo record 5575824)",
+      "caveat": "Partial coverage. A class map, not a measurement at each point."
+    },
+    {
+      "id": "geology",
+      "name": "Rock units",
+      "group": "overlay",
+      "type": "image",
+      "url": "overlays/geology.png",
+      "coordinates": [
+        [
+          77.38,
+          18.512
+        ],
+        [
+          77.522,
+          18.512
+        ],
+        [
+          77.522,
+          18.41
+        ],
+        [
+          77.38,
+          18.41
+        ]
+      ],
+      "legend": [],
+      "credit": "USGS SIM 3464",
+      "caveat": "Mapped at 1:75,000."
+    },
+    {
+      "id": "terrain",
+      "name": "3D terrain",
+      "group": "view",
+      "type": "terrain",
+      "url": "terrain/{z}/{x}/{y}.png",
+      "legend": [],
+      "credit": "Derived from the CTX height map",
+      "caveat": "Should item."
+    }
+  ]
+}

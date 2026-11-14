@@ -1,0 +1,14 @@
+{
+  "width": 8,
+  "height": 6,
+  "res_m": 20.0,
+  "bounds": [
+    18.44,
+    77.45,
+    18.44202447,
+    77.45284539
+  ],
+  "nodata": -9999,
+  "dem": "dem.bin",
+  "slope": "slope.bin"
+}

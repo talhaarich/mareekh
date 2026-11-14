@@ -20,6 +20,8 @@ interface PlanParams {
   timeLimitS: number;      // default from assumptions: eva_time_limit_s
 }
 
+type Objective = "time" | "distance";  // what each leg's route minimises: walking time (fastest) or walked distance (shortest)
+
 interface Leg {
   fromId: string; toId: string;
   ok: boolean;             // false when no path exists under the slope limit
@@ -54,7 +56,7 @@ interface PlanResult {
 To the worker:
 
 ```ts
-{ type: "plan"; requestId: number; stations: Station[]; params: PlanParams }
+{ type: "plan"; requestId: number; stations: Station[]; params: PlanParams; objective?: Objective }  // objective defaults to "time"
 { type: "walkHome"; requestId: number; base: LatLon; params: PlanParams }
 ```
 
@@ -85,7 +87,7 @@ walkHomeS(p: LatLon): number                                   // Infinity when 
 | --- | --- | --- | --- |
 | `data` | `grid`, `manifest`, `stations`, `assumptions`, `conditions`, `loaded` | Talha (loaders) | Everyone |
 | `params` | `PlanParams` | Rafay (sliders) | Talha |
-| `plan` | `result: PlanResult or null`, `busy: boolean` | Talha only | Rafay |
+| `plan` | `result: PlanResult or null`, `busy: boolean`, `compare: PlanResult or null`, `compareBusy: boolean` | Talha only | Rafay |
 | `base` | `LatLon` | Rafay (move-base tool) calls `setBase`; Talha replans | Everyone |
 | `position` | `estimate: LatLon`, `uncertaintyM`, `sinceFixM`, `elapsedS`, `simulated: true`, `fixes: { stationId, elapsedS }[]` | Talha only | Rafay |
 | `view` | `baseView`, `reach: "off" or "distance" or "time"`, `overlay: string or null`, `overlayStrength`, `showWind`, `showLabels`, `mode: "plan" or "eva"` | Rafay only | Rafay |
@@ -97,3 +99,9 @@ Rules:
 - Changing `params` or `base` triggers one replan. Sliders send the new value when released, not on every pixel.
 - `pins` are saved in the browser under the key `mm.pins.v1`.
 - The interface never computes a route number itself. If it needs a number that `PlanResult` lacks, the spec changes first.
+- `result` is always the fastest route (`objective` "time") with the current `params`.
+- Comparing routes: the interface calls `requestCompare(params, objective)` and shows `compare` next to `result`.
+  The two comparisons offered are the hard slope limit (`params` with `slopeLimitDeg` = `slope_limit_hard_deg`, objective "time"),
+  and the shortest route (the current `params`, objective "distance"). `compare` uses its own request ids, so stale
+  replies are ignored as for `result`, and it is cleared (set to null) whenever `params` or `base` change.
+- Times, energy, dose and status in a "distance" result use the same speed model as a "time" result; only the path differs.

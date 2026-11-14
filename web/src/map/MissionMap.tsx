@@ -17,6 +17,7 @@ import { useInteraction } from './interaction'
 import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './layers'
 import MapLabels, { type LabelItem } from './MapLabels'
 import PinGlyph from './PinGlyph'
+import PositionEdgeArrow from './PositionEdgeArrow'
 import { pinLabelText, pinTypeLabel } from './pinLabels'
 import { maplibregl } from './maplibreSetup'
 import { readToken } from './tokens'
@@ -306,11 +307,12 @@ export default function MissionMap() {
 
         {showPosition && (
           <Marker latitude={estimate.lat} longitude={estimate.lon} anchor="center">
-            <div
-              role="img"
-              aria-label="Simulated position"
-              className="h-4 w-4 rounded-full border-2 border-fg bg-route shadow-[0_0_0_4px] shadow-route/30"
-            />
+            {/* Beacon: a DOM marker keeps the same pixel size at every zoom; the pulse makes it findable. */}
+            <div role="img" aria-label="Simulated position" className="relative h-4 w-4">
+              <span className="absolute -inset-2 animate-ping rounded-full border-2 border-route motion-reduce:hidden" />
+              <span className="absolute -inset-1 rounded-full bg-route/25" />
+              <span className="absolute inset-0 rounded-full border-2 border-fg bg-route" />
+            </div>
           </Marker>
         )}
 
@@ -325,6 +327,14 @@ export default function MissionMap() {
           items={labelItems}
         />
       )}
+
+      <PositionEdgeArrow
+        mapRef={mapRef}
+        containerRef={containerRef}
+        ready={mapReady}
+        position={showPosition ? estimate : null}
+        onSelect={() => mapRef.current?.flyTo({ center: [estimate.lon, estimate.lat], duration: 800 })}
+      />
 
       <StationCard />
       <PinEditor />

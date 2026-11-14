@@ -24,13 +24,15 @@ import { readToken } from './tokens'
 import { useLayerAvailability } from './useLayerAvailability'
 
 /** Credit, caveat and colour key for one layer. Every layer shown must say where it came from. */
-function KeyBlock({ title, layer }: { title: string; layer: ImageLayer }) {
+function KeyBlock({ title, layer, missing }: { title: string; layer: ImageLayer; missing: boolean }) {
   return (
     <div className="space-y-1">
       <div className="text-fg">
         <span className="text-fg-muted">{title}: </span>
         {layer.name}
+        {missing && <span className="text-fg-muted"> (not shown)</span>}
       </div>
+      {missing && <div className="text-fg">Picture not built yet. The data pipeline writes it.</div>}
       {layer.legend.length > 0 && (
         <ul className="flex flex-wrap gap-x-3 gap-y-1">
           {layer.legend.map((entry: LegendItem) => (
@@ -360,8 +362,10 @@ export default function MissionMap() {
           data-map-obstacle
           className="pointer-events-none absolute bottom-3 left-3 max-w-xs space-y-3 rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
         >
-          {activeView && <KeyBlock title="View" layer={activeView} />}
-          {activeOverlay && <KeyBlock title="Overlay" layer={activeOverlay} />}
+          {activeView && <KeyBlock title="View" layer={activeView} missing={available[activeView.id] === false} />}
+          {activeOverlay && (
+            <KeyBlock title="Overlay" layer={activeOverlay} missing={available[activeOverlay.id] === false} />
+          )}
         </div>
       )}
     </div>

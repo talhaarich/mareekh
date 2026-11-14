@@ -12,7 +12,7 @@
  */
 
 import { assumptionValue, type Assumption, type Station } from '../state/data'
-import { blockedMask, speedModelFromAssumptions, stepTimeS, type SpeedModel } from './cost'
+import { blockedMask, speedModelFromAssumptions, stepBetween } from './cost'
 import { cellToLatLon, latLonToCell, type Grid } from './grid'
 import type { LatLon } from './mars'
 import { findRoute, search } from './route'
@@ -64,15 +64,6 @@ export function formatDuration(seconds: number): string {
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60
   return h > 0 ? `${h} h ${m} min` : `${m} min`
-}
-
-/** One step between neighbouring cells: seconds, 3D metres and rise in metres. */
-function step(grid: Grid, blocked: Uint8Array, model: SpeedModel, a: number, b: number) {
-  const w = grid.meta.width
-  const diagonal = Math.floor(a / w) !== Math.floor(b / w) && a % w !== b % w
-  const flatM = grid.meta.resM * (diagonal ? Math.SQRT2 : 1)
-  const riseM = grid.dem[b] - grid.dem[a]
-  return { timeS: stepTimeS(grid, blocked, model, a, b, flatM), lengthM: Math.hypot(flatM, riseM), riseM }
 }
 
 /** Seconds to walk to `base` from every cell, by walking time. Infinity when unreachable or when base is off the grid. */
@@ -145,7 +136,7 @@ export function planWalk(grid: Grid, assumptions: Assumption[], stations: Statio
     let climbM = 0
     const path: LatLon[] = [{ lat: from.lat, lon: from.lon }]
     for (let j = 1; j < route.cells.length; j++) {
-      const s = step(grid, blocked, model, route.cells[j - 1], route.cells[j])
+      const s = stepBetween(grid, blocked, model, route.cells[j - 1], route.cells[j])
       distanceM += s.lengthM
       if (s.riseM > 0) climbM += s.riseM
       const centre = cellToLatLon(grid.meta, Math.floor(route.cells[j] / w), route.cells[j] % w)

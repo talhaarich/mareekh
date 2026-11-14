@@ -19,10 +19,10 @@
     "sol": 686,
     "photos": [
       {
-        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/scam/LRF_0686_0727838809_632EBY_N0321174SCAM01686_0010I9J01_1200.jpg",
-        "camera": "SUPERCAM_RMI",
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/ncam/NLG_0686_0727840146_099ECM_N0321174NCAM00500_00_2I4J01_1200.jpg",
+        "camera": "NAVCAM_LEFT",
         "sol": 686,
-        "credit": "NASA/JPL-Caltech/LANL/CNES/IRAP"
+        "credit": "NASA/JPL-Caltech"
       },
       {
         "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/zcam/ZR7_0686_0727837892_433ECM_N0321174ZCAM01058_1100LMJ03_1200.jpg",
@@ -31,10 +31,10 @@
         "credit": "NASA/JPL-Caltech/ASU"
       },
       {
-        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/zcam/ZL7_0686_0727837892_433EBY_N0321174ZCAM01058_1100LMJ03_1200.jpg",
-        "camera": "MCZ_LEFT",
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00686/ids/edr/browse/fcam/FLF_0686_0727849263_537ECM_N0321184FHAZ02218_01_185J01_1200.jpg",
+        "camera": "FRONT_HAZCAM_LEFT_A",
         "sol": 686,
-        "credit": "NASA/JPL-Caltech/ASU"
+        "credit": "NASA/JPL-Caltech"
       }
     ]
   },
@@ -48,20 +48,20 @@
     "sol": 437,
     "photos": [
       {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/ncam/NLF_0437_0705741739_881EBY_N0244232SAPP00601_00_0LLJ01_1200.jpg",
+        "camera": "NAVCAM_LEFT",
+        "sol": 437,
+        "credit": "NASA/JPL-Caltech"
+      },
+      {
         "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/zcam/ZL7_0437_0705726079_092EBY_N0243900ZCAM01013_0340LMJ02_1200.jpg",
         "camera": "MCZ_LEFT",
         "sol": 437,
         "credit": "NASA/JPL-Caltech/ASU"
       },
       {
-        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/zcam/ZR0_0437_0705735072_428EBY_N0243900ZCAM03361_1100LMJ02_1200.jpg",
-        "camera": "MCZ_RIGHT",
-        "sol": 437,
-        "credit": "NASA/JPL-Caltech/ASU"
-      },
-      {
-        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/ncam/NLF_0437_0705741739_881EBY_N0244232SAPP00601_00_0LLJ01_1200.jpg",
-        "camera": "NAVCAM_LEFT",
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00437/ids/edr/browse/fcam/FLF_0437_0705743039_929ECM_N0244232FHAZ02418_01_295J01_1200.jpg",
+        "camera": "FRONT_HAZCAM_LEFT_A",
         "sol": 437,
         "credit": "NASA/JPL-Caltech"
       }
@@ -69,22 +69,22 @@
   },
   {
     "id": "S3",
-    "name": "Delta top",
+    "name": "Delta front, top of Hawksbill Gap",
     "lat": 18.45879356,
     "lon": 77.40601278,
-    "task": "Sample the top of the delta, where flat-lying beds point to river deposits laid down after the delta front built out.",
+    "task": "Sample the layered rocks of the delta front at the top of the Hawksbill Gap climb, about 18 m above the delta base, to compare them with the samples taken at its foot.",
     "dwell_s": 1200,
     "sol": 464,
     "photos": [
       {
-        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00464/ids/edr/browse/zcam/ZR6_0464_0708122537_318EBY_N0260630ZCAM03377_1100LMJ01_1200.jpg",
-        "camera": "MCZ_RIGHT",
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00464/ids/edr/browse/ncam/NLE_0464_0708138841_380ECM_N0260756NCAM00708_03_0LLJ01_1200.jpg",
+        "camera": "NAVCAM_LEFT",
         "sol": 464,
-        "credit": "NASA/JPL-Caltech/ASU"
+        "credit": "NASA/JPL-Caltech"
       },
       {
-        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00464/ids/edr/browse/zcam/ZL0_0464_0708122528_318EBY_N0260630ZCAM03377_1100LMJ01_1200.jpg",
-        "camera": "MCZ_LEFT",
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00464/ids/edr/browse/zcam/ZR6_0464_0708122537_318EBY_N0260630ZCAM03377_1100LMJ01_1200.jpg",
+        "camera": "MCZ_RIGHT",
         "sol": 464,
         "credit": "NASA/JPL-Caltech/ASU"
       },

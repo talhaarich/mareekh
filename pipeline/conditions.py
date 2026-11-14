@@ -3,19 +3,24 @@
 Units out: air temperature in kelvin, pressure in pascals, tau unitless
 (CONVENTIONS.md).
 
-Checked against real files: the derived pressure file (``WE__0100___DER_PS``) has the header
-``SCLK,LMST,LTST,PRESSURE,PRESSURE_UNCERTAINTY,TRANSDUCER`` and ``PRESSURE`` is in pascals.
-NOT yet checked against a real file: the calibrated ATS file, whose columns
-``ATS_LOCAL_TEMP1`` .. ``ATS_LOCAL_TEMP5`` (K) come from a summary of the MEDA RDR SIS.
-None of the derived files (PS, RHS, TIRS, WS) holds air temperature, so an ATS file is needed.
+Checked against the real sol-100 files from the PDS Atmospheres Node:
+* Derived pressure, ``WE__0100___________DER_PS__________________P01.CSV``: header
+  ``SCLK,LMST,LTST,PRESSURE,PRESSURE_UNCERTAINTY,TRANSDUCER``; ``PRESSURE`` is in pascals.
+* Calibrated air temperature, ``WE__0100___________CAL_ATS_________________P01.CSV``
+  (``data_calibrated_env``): header ``SCLK,LMST,LTST,ATS_LOCAL_TEMP1,...,ATS_LOCAL_TEMP5``;
+  its label gives each ATS column in kelvin.
+None of the derived files (PS, RHS, TIRS, WS) holds air temperature, so the ATS file is needed.
 The sol is checked against the first LMST value of each file (``00100M...`` means sol 100).
+On sol 100 both files have readings in every hour of the sol, in sessions totalling about 14 hours.
 
 Three deliberate choices:
 * Invalid values: the SIS says ``999999999`` and the PDS readme says ``9999999999``.
   Any value of 999999999 or more is dropped, so both spellings are covered.
+  (The sol-100 PS and ATS files hold no invalid values; the rule is for other sols.)
 * Air temperature never comes from the humidity sensor (``HUMIDITY_LOCAL_TEMP``,
   ``HUMICAP_TEMP``). Those columns are not read at all.
-* Tau is not a MEDA CSV column, so it must be passed in with a source.
+* Tau is not a MEDA CSV column, so it must be passed in with ``tau_source``, which goes into
+  ``source``.
 """
 
 from __future__ import annotations
@@ -91,18 +96,20 @@ def conditions_from_meda(
     *,
     air_temp_csv_path: str | None = None,
     tau: float | None = None,
+    tau_source: str,
 ) -> dict:
     """Return ``{sol, tau, air_temp_k, pressure_pa, source, caveat}`` for ``sol``.
 
     ``csv_path`` is the MEDA derived pressure file for the sol (column PRESSURE, Pa).
     ``air_temp_csv_path`` is the MEDA calibrated ATS file for the same sol; if it is
     None, ``csv_path`` itself must hold the ATS columns. Pressure and temperature are
-    the medians of the valid readings in the files. MEDA only measures about 12 hours
-    per sol, so these are medians over the measured hours, not a full-day mean.
-    ``tau`` (dust optical depth, unitless) is not in the MEDA CSVs; pass a sourced value.
+    the medians of the valid readings in the files. MEDA measures in sessions (on sol 100,
+    about 14 hours in all), so these are medians over the measured time, not a full-day mean.
+    ``tau`` (dust optical depth, unitless) is not in the MEDA CSVs; pass a value and say
+    where it comes from in ``tau_source`` (plain words, added to ``source``).
 
     Raises:
-        ConditionsError: no tau, missing columns, no valid readings, or a value
+        ConditionsError: no tau or tau_source, missing columns, no valid readings, or a value
             outside its sane range (pressure 100 to 1500 Pa, air 120 to 330 K, tau 0 to 10).
     """
     if isinstance(sol, bool) or not isinstance(sol, int) or sol < 0:
@@ -110,6 +117,8 @@ def conditions_from_meda(
     if tau is None:
         raise ConditionsError("tau is not a MEDA CSV column; pass tau=<value> from a sourced dust-opacity product")
     tau = _check_range("tau", float(tau), TAU_RANGE, "")
+    if not isinstance(tau_source, str) or not tau_source.strip():
+        raise ConditionsError("tau_source is empty; say where the tau value comes from")
     _check_file_sol(csv_path, sol)  # derived/calibrated MEDA files hold one sol; LMST starts with it
     if air_temp_csv_path:
         _check_file_sol(air_temp_csv_path, sol)
@@ -134,6 +143,10 @@ def conditions_from_meda(
         "tau": tau,
         "air_temp_k": air_temp_k,
         "pressure_pa": pressure_pa,
-        "source": f"NASA PDS Atmospheres Node, Mars 2020 MEDA (derived pressure, calibrated ATS), sol {sol}",
-        "caveat": "Median over the hours MEDA measured on this sol (about 12 of 24); not a full-day average. Tau supplied separately.",
+        "source": f"NASA PDS Atmospheres Node, Mars 2020 MEDA (derived pressure, calibrated ATS), sol {sol}. Tau: {tau_source.strip()}",
+        "caveat": (
+            "Median of the readings MEDA took on this sol; MEDA measures in sessions, not all day, so this is "
+            f"not a full-day average. Tau is not measured by MEDA (see source). Sol {sol} is used as a typical "
+            "sol: the walk has no date."
+        ),
     }

@@ -1,14 +1,19 @@
-"""Rover photos for a station, from NASA's Mars 2020 raw-image feed.
+"""Rover photos for a station, from NASA's Mars 2020 raw-images feed.
 
 NASA's "Mars Rover Photos" API (api.nasa.gov/mars-photos) was retired and its
 repository archived on 8 Oct 2025, so this module uses the Mars 2020 raw-images
 JSON feed on mars.nasa.gov instead.
 
-UNVERIFIED: the shell here could not reach NASA, so the query string and the
-response field names below (``images``, ``sol``, ``camera.instrument``,
-``image_files``, ``sample_type``, ``credit``) come from memory of the feed, not a
-live response. Check them against one real response before relying on this
-(docs/chat-posts.md, item BLOCKED-photos).
+Checked against a live response for sol 686 (saved, trimmed, in
+tests/pipeline/data/raw_images_sol686.json): the query below returns
+``{"sol", "images", "num_images", "type", "most_recent", "mission"}``, and each image
+has ``sol`` (int), ``sample_type`` (``"Full"`` for every sol-686 image),
+``camera.instrument`` (e.g. ``NAVCAM_LEFT``, ``MCZ_RIGHT``), ``credit`` and
+``image_files`` with ``small``, ``medium``, ``large`` and ``full_res`` URLs.
+
+Photo choice: cameras that do not show the scene around a station are skipped
+(``SKIP_CAMERA_PREFIXES``); the rest are ranked by ``PREFERRED_CAMERA_PREFIXES``;
+a stereo pair (left and right of one camera) counts as one camera.
 
 Output items: ``{"url": str, "camera": str, "sol": int, "credit": str}``.
 """
@@ -25,6 +30,11 @@ FEED_URL = "https://mars.nasa.gov/rss/api/"
 DEFAULT_CREDIT = "NASA/JPL-Caltech"
 _URL_SIZES = ("large", "medium", "full_res", "small")  # preference order
 _FETCH_COUNT = 100  # images requested per sol; we keep at most max_n of them
+
+# Close-up, sky, sampling-system and landing cameras: not a view of the station.
+SKIP_CAMERA_PREFIXES = ("SUPERCAM_RMI", "SHERLOC", "CACHECAM", "SKYCAM", "EDL", "LCAM")
+# Most useful first. Any other camera ranks after these, in feed order.
+PREFERRED_CAMERA_PREFIXES = ("NAVCAM", "MCZ", "FRONT_HAZCAM", "REAR_HAZCAM")
 
 
 class PhotosError(RuntimeError):
@@ -55,11 +65,33 @@ def _pick_url(item: dict[str, Any]) -> str | None:
     return None
 
 
+def camera_rank(camera: str) -> int:
+    """Position of ``camera`` in ``PREFERRED_CAMERA_PREFIXES``; cameras not listed rank after all of them."""
+    for rank, prefix in enumerate(PREFERRED_CAMERA_PREFIXES):
+        if camera.startswith(prefix):
+            return rank
+    return len(PREFERRED_CAMERA_PREFIXES)
+
+
+def camera_family(camera: str) -> str:
+    """The camera with its stereo side removed: ``MCZ_LEFT`` and ``MCZ_RIGHT`` are both ``MCZ``.
+
+    A listed camera's family is its prefix in ``PREFERRED_CAMERA_PREFIXES`` (so the hazard
+    cameras' ``FRONT_HAZCAM_LEFT_A`` and ``FRONT_HAZCAM_RIGHT_A`` are one family too).
+    """
+    for prefix in PREFERRED_CAMERA_PREFIXES:
+        if camera.startswith(prefix):
+            return prefix
+    return "_".join(part for part in camera.split("_") if part not in ("LEFT", "RIGHT"))
+
+
 def parse_raw_images(payload: dict, sol: int, max_n: int) -> list[dict]:
     """Turn a feed response into at most ``max_n`` photo dicts for ``sol``.
 
-    Skips thumbnails, other sols, and items with no usable URL. Prefers one image
-    per camera first so the station card shows different views, then fills up.
+    Skips thumbnails, other sols, items with no usable URL and cameras in
+    ``SKIP_CAMERA_PREFIXES``. Orders the rest by ``camera_rank`` (feed order within a
+    rank), takes one image per camera family first so the station card shows
+    different views, then fills up in the same order.
     """
     if max_n < 0:
         raise ValueError("max_n must be 0 or more")
@@ -82,15 +114,19 @@ def parse_raw_images(payload: dict, sol: int, max_n: int) -> list[dict]:
         if not url or url in seen_urls:
             continue
         seen_urls.add(url)
-        camera = (item.get("camera") or {}).get("instrument") or "unknown"
-        candidates.append({"url": url, "camera": str(camera), "sol": sol, "credit": str(item.get("credit") or DEFAULT_CREDIT)})
+        camera = str((item.get("camera") or {}).get("instrument") or "unknown")
+        if camera.startswith(SKIP_CAMERA_PREFIXES):
+            continue
+        candidates.append({"url": url, "camera": camera, "sol": sol, "credit": str(item.get("credit") or DEFAULT_CREDIT)})
 
+    candidates.sort(key=lambda photo: camera_rank(photo["camera"]))  # stable: feed order within a rank
     chosen: list[dict] = []
-    used_cameras: set[str] = set()
-    for photo in candidates:  # first pass: one per camera
-        if len(chosen) < max_n and photo["camera"] not in used_cameras:
+    used_families: set[str] = set()
+    for photo in candidates:  # first pass: one per camera family
+        family = camera_family(photo["camera"])
+        if len(chosen) < max_n and family not in used_families:
             chosen.append(photo)
-            used_cameras.add(photo["camera"])
+            used_families.add(family)
     for photo in candidates:  # second pass: fill remaining places
         if len(chosen) < max_n and photo not in chosen:
             chosen.append(photo)

@@ -35,7 +35,7 @@
     "key": "speed_decay_per_grade",
     "value": 3.5,
     "unit": "",
-    "source": "Tobler's hiking function (Tobler 1993, NCGIA Technical Report 93-1): the 3.5 in exp(-3.5 * |grade + 0.05|). Shape only; the speed is rescaled so flat ground = walk_speed_long_ms.",
+    "source": "Tobler's hiking function (Tobler 1993, NCGIA Technical Report 93-1). Shape only.",
     "url": "",
     "kind": "published"
   },
@@ -43,7 +43,7 @@
     "key": "speed_optimum_grade",
     "value": -0.05,
     "unit": "",
-    "source": "Tobler's hiking function, same source: walking is fastest on a 5% downhill (grade -0.05, rise over run).",
+    "source": "Same source: fastest on a 5% downhill. Grade is rise over run.",
     "url": "",
     "kind": "published"
   },

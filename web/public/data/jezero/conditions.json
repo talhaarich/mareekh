@@ -3,6 +3,6 @@
   "tau": 0.4,
   "air_temp_k": 217.47,
   "pressure_pa": 759.08,
-  "source": "NASA PDS Atmospheres Node, Mars 2020 MEDA (derived pressure, calibrated ATS), sol 100",
-  "caveat": "Median over the hours MEDA measured on this sol (about 12 of 24); not a full-day average. Tau supplied separately."
+  "source": "NASA PDS Atmospheres Node, Mars 2020 MEDA (derived pressure, calibrated ATS), sol 100. Tau: team assumption tau_normal (assumptions.json)",
+  "caveat": "Median of the readings MEDA took on this sol; MEDA measures in sessions, not all day, so this is not a full-day average. Tau is not measured by MEDA (see source). Sol 100 is used as a typical sol: the walk has no date."
 }

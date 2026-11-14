@@ -17,9 +17,14 @@ const { meta } = tiny
 const at = (r: number, c: number) => cellIndex(meta, r, c)
 
 describe('speed model', () => {
-  it('uses the long-walk speed from assumptions.json and the Tobler curve shape', () => {
+  it('comes entirely from assumptions.json: long-walk speed and the Tobler curve shape', () => {
     expect(vmax).toBe(0.75)
     expect(model).toEqual({ vmaxMs: 0.75, decay: 3.5, optimumGrade: -0.05 })
+  })
+
+  it('fails loudly if a shape key is missing, instead of falling back to a default', () => {
+    const without = assumptions.filter((a) => a.key !== 'speed_decay_per_grade')
+    expect(() => speedModelFromAssumptions(without)).toThrow('no entry for "speed_decay_per_grade"')
   })
 })
 

@@ -3,8 +3,7 @@
  * Design: docs/HOW_IT_WORKS.md section 4. The cost grid is never a file; it is built here from
  * slope.bin, the slope limit and the speed model, so sliders work without the pipeline.
  *
- * vmax comes from assumptions.json. The curve's two shape numbers are named constants below
- * for now; they move into assumptions.json in their own pull request.
+ * No constant is typed into this file: vmax and the curve's shape all come from assumptions.json.
  */
 
 import { cellIndex, type Grid, type GridMeta } from './grid'
@@ -14,9 +13,9 @@ import { assumptionValue, type Assumption } from '../state/data'
 export interface SpeedModel {
   /** Flat-ground walking speed, m/s. */
   vmaxMs: number
-  /** How fast speed falls away from the optimum grade (the 3.5 in Tobler's formula). Per unit grade. */
+  /** How fast speed falls away from the optimum grade, per unit grade (`speed_decay_per_grade`). */
   decay: number
-  /** Grade walked fastest, rise/run, negative = downhill (the 0.05 in Tobler's |grade + 0.05|, as -0.05). */
+  /** Grade walked fastest, rise/run, negative = downhill (`speed_optimum_grade`). */
   optimumGrade: number
 }
 
@@ -31,16 +30,17 @@ export function vmaxFromAssumptions(assumptions: Assumption[]): number {
   return assumptionValue(assumptions, VMAX_KEY)
 }
 
-/**
- * Tobler's hiking function, v = 6 * exp(-3.5 * |grade + 0.05|) km/h (Tobler 1993, NCGIA Technical Report 93-1).
- * Only its shape is used; the speed itself is rescaled to vmax. Temporary: these move into assumptions.json.
- */
-export const TOBLER_DECAY = 3.5
-export const TOBLER_OPTIMUM_GRADE = -0.05
+/** Assumption keys for the curve's shape (Tobler's hiking function, rescaled to vmax). */
+export const DECAY_KEY = 'speed_decay_per_grade'
+export const OPTIMUM_GRADE_KEY = 'speed_optimum_grade'
 
-/** The speed model the planner uses. Do not tune it to make a plan come out GO. */
+/** The speed model the planner uses, entirely from assumptions.json. Do not tune it to make a plan come out GO. */
 export function speedModelFromAssumptions(assumptions: Assumption[]): SpeedModel {
-  return { vmaxMs: vmaxFromAssumptions(assumptions), decay: TOBLER_DECAY, optimumGrade: TOBLER_OPTIMUM_GRADE }
+  return {
+    vmaxMs: vmaxFromAssumptions(assumptions),
+    decay: assumptionValue(assumptions, DECAY_KEY),
+    optimumGrade: assumptionValue(assumptions, OPTIMUM_GRADE_KEY),
+  }
 }
 
 /**

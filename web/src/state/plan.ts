@@ -19,6 +19,8 @@ interface PlanState {
   busy: boolean
   /** Route B: one change from the plan (a compare preset). Null when compare is off. */
   compare: PlanResult | null
+  /** Goes up by one each time a new walk-home field arrives. Subscribe to it, then call getWalkHomeField(). */
+  walkHomeVersion: number
   /**
    * Plans the walk through `stations` (walking order, base first). Replaces any request still running.
    * Call when params or base change; this also clears `compare`.
@@ -56,7 +58,10 @@ export function createPlanStore(makeWorker: () => WorkerLike) {
           if (m.requestId === latestPlan) set({ result: m.result, busy: false })
           else if (m.requestId === latestCompare) set({ compare: m.result })
         } else if (m.type === 'walkHomeResult') {
-          if (m.requestId === latestHome) field = m.field
+          if (m.requestId === latestHome) {
+            field = m.field
+            set((s) => ({ walkHomeVersion: s.walkHomeVersion + 1 }))
+          }
         } else {
           if (m.requestId === latestPlan) set({ result: null, busy: false })
           if (m.requestId === latestCompare) set({ compare: null })
@@ -71,6 +76,7 @@ export function createPlanStore(makeWorker: () => WorkerLike) {
       result: null,
       busy: false,
       compare: null,
+      walkHomeVersion: 0,
       requestPlan: (stations, params) => {
         latestPlan = nextId++
         latestCompare = 0 // any compare still running is now stale

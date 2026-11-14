@@ -1,0 +1,23 @@
+# Walk stations in walking order. Owner: Sadia. Base (B) comes from jezero.yaml, not from here.
+# Schema is a proposal (CONTRACTS.md defines stations.json, not this file).
+# lat/lon are NOT written here: stations.py takes them from the rover waypoint file for each sol.
+#
+# DRAFT. Check every sol against the downloaded waypoint file before use.
+# dwell_s is null on purpose: the time at each station is a team assumption in docs/assumptions.md,
+# which was not available. stations.py refuses to build until a whole number is filled in.
+stations:
+  - id: S1
+    name: Three Forks depot
+    sol: 686            # last tube dropped, 28 Jan 2023 (NASA); first tube was sol 653
+    dwell_s: 1200
+    task: "Collect the sample tubes Perseverance left at the Three Forks depot: 10 tubes laid out 5 to 15 m apart on flat ground at the foot of the delta."
+  - id: S2
+    name: Delta base (Hawksbill Gap)
+    sol: 437            # start of the Hawksbill Gap ascent, sols 437-470 (Russell et al., LPSC 2023). TO CONFIRM
+    dwell_s: 1200
+    task: "Sample the base of the delta, where the layered rocks are thought to have formed in a lake."
+  - id: S3
+    name: Delta top
+    sol: 464            # end of the Hawksbill Gap ascent, sols 437-470 (Russell et al., LPSC 2023). TO CONFIRM
+    dwell_s: 1200
+    task: "Sample the top of the delta, where flat-lying beds point to river deposits laid down after the delta front built out."

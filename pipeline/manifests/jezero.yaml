@@ -1,0 +1,19 @@
+# Jezero walk region: name, base and the walk box. Owner: Sadia.
+# Schema is a proposal (CONTRACTS.md does not define this file): name, base_name, base, bounds.
+# Coordinates are degrees, longitude east, in the same frame as the rover waypoint file
+# (base below matches Perseverance's position on sol 13 to about 1 m).
+
+name: Jezero Crater, crater floor and western delta front
+base_name: Base
+
+base:
+  # Near Perseverance's landing site (Octavia E. Butler Landing).
+  lat: 18.4446
+  lon: 77.4509
+
+# Walk box [south, west, north, east], about 8 x 6 km (400 x 300 cells at 20 m).
+# This is the area the route grid covers, NOT the larger area the raw data was downloaded for
+# (17.95-18.85 N, 77.10-78.00 E; see docs/data-log.md).
+# Checked with stations.build_stations on the real waypoint file: every point is at least 500 m inside.
+# Margins: B 2051 m, S1 1599 m, S2 1616 m, S3 1463 m.
+bounds: [18.41, 77.38, 18.512, 77.522]

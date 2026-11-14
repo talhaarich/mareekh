@@ -3,15 +3,19 @@ import MapGL, { Layer, Marker, NavigationControl, Source } from 'react-map-gl/ma
 import type { MapRef } from 'react-map-gl/maplibre'
 import type { Feature, LineString } from 'geojson'
 import type { StyleSpecification } from 'maplibre-gl'
+import PinEditor from '../components/PinEditor'
 import StationCard from '../components/StationCard'
 import { fmtDuration } from '../components/format'
 import { dataUrl } from '../lib/dataUrl'
 import { useData, type LegendItem } from '../state/data'
+import { usePins } from '../state/pins'
 import { usePlan } from '../state/plan'
 import { useView } from '../state/view'
 import { useInteraction } from './interaction'
 import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './layers'
 import MapLabels, { type LabelItem } from './MapLabels'
+import PinGlyph from './PinGlyph'
+import { pinLabelText, pinTypeLabel } from './pinLabels'
 import { maplibregl } from './maplibreSetup'
 import { readToken } from './tokens'
 import { useLayerAvailability } from './useLayerAvailability'
@@ -92,6 +96,11 @@ export default function MissionMap() {
   const available = useLayerAvailability((s) => s.available)
   const turnBack = usePlan((s) => s.result?.turnBack ?? null)
   const selectStation = useInteraction((s) => s.selectStation)
+  const pins = usePins((s) => s.pins)
+  const pinDropType = useInteraction((s) => s.pinDropType)
+  const setPinDropType = useInteraction((s) => s.setPinDropType)
+  const editPin = useInteraction((s) => s.editPin)
+  const flyTarget = useInteraction((s) => s.flyTarget)
 
   const baseView = useView((s) => s.baseView)
   const overlay = useView((s) => s.overlay)
@@ -128,15 +137,36 @@ export default function MissionMap() {
     )
   }, [mapReady, manifest])
 
-  // Everything that gets a label: base, stations, turn-back point.
+  // Esc leaves pin-drop mode.
+  useEffect(() => {
+    if (!pinDropType) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPinDropType(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pinDropType, setPinDropType])
+
+  // Fly to a pin picked in the field-notes list.
+  useEffect(() => {
+    if (!mapReady || !flyTarget) return
+    const map = mapRef.current
+    if (!map) return
+    map.flyTo({ center: [flyTarget.lon, flyTarget.lat], zoom: Math.max(map.getZoom(), 14), duration: 800 })
+  }, [mapReady, flyTarget])
+
+  // Everything that gets a label: base, stations, pins, turn-back point.
   const labelItems = useMemo<LabelItem[]>(() => {
     const items: LabelItem[] = stations.map((s) => ({
       id: s.id,
       lat: s.lat,
       lon: s.lon,
       text: `${s.id} · ${s.name}`,
-      stationId: s.id === 'B' ? undefined : s.id,
+      onSelect: s.id === 'B' ? undefined : () => selectStation(s.id),
     }))
+    for (const p of pins) {
+      items.push({ id: `pin-${p.id}`, lat: p.lat, lon: p.lon, text: pinLabelText(p), onSelect: () => editPin(p.id) })
+    }
     if (turnBack) {
       items.push({
         id: 'turnback',
@@ -146,7 +176,7 @@ export default function MissionMap() {
       })
     }
     return items
-  }, [stations, turnBack])
+  }, [stations, pins, turnBack, selectStation, editPin])
 
   const viewMissing = activeView !== null && available[activeView.id] === false
 
@@ -158,6 +188,13 @@ export default function MissionMap() {
         mapStyle={blankStyle}
         initialViewState={{ latitude: 18.4446, longitude: 77.4509, zoom: 11 }}
         attributionControl={false}
+        cursor={pinDropType ? 'crosshair' : undefined}
+        onClick={(e) => {
+          if (!pinDropType) return
+          const id = usePins.getState().addPin(pinDropType, { lat: e.lngLat.lat, lon: e.lngLat.lng })
+          setPinDropType(null)
+          editPin(id)
+        }}
         onLoad={() => setMapReady(true)}
         style={{ width: '100%', height: '100%' }}
       >
@@ -204,12 +241,29 @@ export default function MissionMap() {
               <button
                 type="button"
                 aria-label={`Open station card: ${s.id}, ${s.name}`}
-                onClick={() => selectStation(s.id)}
+                onClick={() => {
+                  if (!pinDropType) selectStation(s.id)
+                }}
                 className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 border-fg bg-panel text-[11px] font-bold text-fg"
               >
                 {s.id}
               </button>
             )}
+          </Marker>
+        ))}
+
+        {pins.map((p) => (
+          <Marker key={p.id} latitude={p.lat} longitude={p.lon} anchor="center">
+            <button
+              type="button"
+              aria-label={`Open note: ${pinTypeLabel(p.type)} pin`}
+              onClick={() => {
+                if (!pinDropType) editPin(p.id)
+              }}
+              className="block cursor-pointer"
+            >
+              <PinGlyph type={p.type} />
+            </button>
           </Marker>
         ))}
 
@@ -232,11 +286,21 @@ export default function MissionMap() {
           containerRef={containerRef}
           ready={mapReady}
           items={labelItems}
-          onSelectStation={selectStation}
         />
       )}
 
       <StationCard />
+      <PinEditor />
+
+      {pinDropType && (
+        <div
+          data-map-obstacle
+          role="status"
+          className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md border border-fg-muted bg-panel/95 px-3 py-1.5 text-xs text-fg shadow"
+        >
+          Click the map to drop a {pinTypeLabel(pinDropType).toLowerCase()} pin · Esc cancels
+        </div>
+      )}
 
       {viewMissing && activeView && (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-sm text-fg-muted">

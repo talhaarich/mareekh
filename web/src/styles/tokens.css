@@ -21,6 +21,12 @@
   --color-brand: #f97316;
   --color-route: #22d3ee;
 
+  /* Field-note pins. Told apart by shape first (triangle, square, star), colour second.
+     Deliberately not red, amber, green, orange or cyan: those mean status, base and route. */
+  --color-pin-hazard: #e879f9;
+  --color-pin-sample: #60a5fa;
+  --color-pin-feature: #c4b5fd;
+
   /* Cockpit status: reserved */
   --color-go: #22c55e;
   --color-caution: #fbbf24;

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useInteraction } from '../map/interaction'
 
 interface AppShellProps {
   /** Left panel: map controls */
@@ -23,6 +24,15 @@ type Drawer = 'left' | 'right' | null
 export default function AppShell({ left, right, children, regionName, notice }: AppShellProps) {
   const [open, setOpen] = useState<Drawer>(null)
   const toggle = (d: Exclude<Drawer, null>) => setOpen((cur) => (cur === d ? null : d))
+
+  // On narrow screens a drawer covers the map: close it when a pin type is picked, so the map can be clicked.
+  useEffect(
+    () =>
+      useInteraction.subscribe((s, prev) => {
+        if (s.pinDropType && !prev.pinDropType) setOpen(null)
+      }),
+    [],
+  )
 
   const drawerBase = 'absolute inset-y-0 z-20 overflow-y-auto bg-panel p-4 transition-transform lg:static lg:translate-x-0'
 

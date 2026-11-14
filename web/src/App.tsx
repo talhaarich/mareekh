@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AppShell from './components/AppShell'
+import FieldNotes from './components/FieldNotes'
 import LayerControls from './components/LayerControls'
 import LimitsPanel from './components/LimitsPanel'
 import PlanPanel from './components/PlanPanel'
@@ -29,7 +30,12 @@ export default function App() {
 
   return (
     <AppShell
-      left={<LayerControls />}
+      left={
+        <div className="space-y-8">
+          <LayerControls />
+          <FieldNotes />
+        </div>
+      }
       right={
         <div className="space-y-8">
           <PlanPanel />

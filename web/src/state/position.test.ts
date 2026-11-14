@@ -28,6 +28,13 @@ beforeEach(() => {
 })
 
 describe('position', () => {
+  it('moves onto base by itself when data finishes loading', () => {
+    useData.setState({ loaded: false })
+    usePosition.setState({ estimate: { lat: NaN, lon: NaN } })
+    useData.setState({ loaded: true })
+    expect(usePosition.getState().estimate).toEqual({ lat: stations[0].lat, lon: stations[0].lon })
+  })
+
   it('starts at base with no uncertainty, labelled simulated', () => {
     expect(usePosition.getState()).toMatchObject({ estimate: { lat: stations[0].lat, lon: stations[0].lon }, uncertaintyM: 0, sinceFixM: 0, elapsedS: 0, simulated: true, fixes: [] })
   })

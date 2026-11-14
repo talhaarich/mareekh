@@ -201,3 +201,35 @@ describe('fastest vs shortest', () => {
     expect(explicit.movingTimeS).toBe(fastest.movingTimeS)
   })
 })
+
+describe('stations on steep ground', () => {
+  // Flat strip, but the station's own 20 m cell is 25 degrees: over the 15 degree plan limit.
+  const g = makeGrid(20, 5)
+  const steep = (r: number, c: number) => (g.slope[cellIndex(g.meta, r, c)] = 25)
+
+  it('a station on a 25 degree cell is still reachable: GO', () => {
+    steep(2, 15)
+    const r = planWalk(g, assumptions, [station(g, 'B', 2, 0, 0), station(g, 'S1', 2, 15, 600)], params(A('eva_time_limit_s')))
+    expect(r.status).toBe('go')
+    expect(r.legs.every((l) => l.ok)).toBe(true)
+    g.slope.fill(0)
+  })
+
+  it('a base on a 25 degree cell is still reachable: GO, with a walk-home field', () => {
+    steep(2, 0)
+    const stations = [station(g, 'B', 2, 0, 0), station(g, 'S1', 2, 15, 600)]
+    const r = planWalk(g, assumptions, stations, params(A('eva_time_limit_s')))
+    expect(r.status).toBe('go')
+    expect(r.turnBack).toBeNull()
+    const home = walkHomeTimes(g, assumptions, stations[0], params(A('eva_time_limit_s')))
+    expect(home[cellIndex(g.meta, 2, 15)]).toBeCloseTo(15 * flatSide, 6)
+    g.slope.fill(0)
+  })
+
+  it('other steep cells still block', () => {
+    for (let r = 0; r < 5; r++) steep(r, 8) // a wall between base and S1
+    const r = planWalk(g, assumptions, [station(g, 'B', 2, 0, 0), station(g, 'S1', 2, 15, 600)], params(A('eva_time_limit_s')))
+    expect(r.status).toBe('nogo')
+    g.slope.fill(0)
+  })
+})

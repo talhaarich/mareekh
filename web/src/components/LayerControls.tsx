@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { overlayLayers, resolveBaseView, viewLayers } from '../map/layers'
-import { useMissionData } from '../map/useMissionData'
+import { useLayerAvailability } from '../map/useLayerAvailability'
+import { useData } from '../state/data'
 import { reachBlockedByOverlay, useView } from '../state/view'
 import type { Reach } from '../state/view'
 
@@ -50,9 +51,8 @@ function RadioRow({ name, label, checked, disabled = false, note, title, onSelec
 }
 
 export default function LayerControls() {
-  const manifest = useMissionData((s) => s.manifest)
-  const status = useMissionData((s) => s.status)
-  const available = useMissionData((s) => s.available)
+  const manifest = useData((s) => s.manifest)
+  const available = useLayerAvailability((s) => s.available)
 
   const baseView = useView((s) => s.baseView)
   const reach = useView((s) => s.reach)
@@ -71,9 +71,6 @@ export default function LayerControls() {
   const overlays = useMemo(() => overlayLayers(manifest), [manifest])
   const activeView = resolveBaseView(views, baseView)
 
-  if (status === 'error') {
-    return <p className="text-sm text-fg-muted">The map layer list could not be loaded.</p>
-  }
   if (!manifest) {
     return <p className="text-sm text-fg-muted">Loading layers…</p>
   }

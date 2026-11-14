@@ -1,29 +1,37 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import AppShell from './components/AppShell'
 import LayerControls from './components/LayerControls'
+import PlanPanel from './components/PlanPanel'
+import { usePlanner } from './components/planParams'
 import MissionMap from './map/MissionMap'
-import { useMissionData } from './map/useMissionData'
-
-/** Stands in for the plan, safety and limits panels (Tasks 6 and 8). Shows no numbers. */
-function RightPanelPlaceholder() {
-  return (
-    <div className="space-y-2 text-sm text-fg-muted">
-      <h2 className="text-[11px] font-semibold uppercase tracking-wider">Plan</h2>
-      <p>The plan, safety and limits panels arrive here.</p>
-    </div>
-  )
-}
+import { useLayerAvailability } from './map/useLayerAvailability'
+import { useData } from './state/data'
 
 export default function App() {
-  const load = useMissionData((s) => s.load)
-  const regionName = useMissionData((s) => s.manifest?.region.name)
+  const load = useData((s) => s.load)
+  const manifest = useData((s) => s.manifest)
+  const checkLayers = useLayerAvailability((s) => s.check)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
+  // Talha's loader reads every data file once; if a file is missing or breaks its contract it
+  // rejects with the file and field name, which we show instead of leaving a blank screen.
   useEffect(() => {
-    void load()
+    load().catch((e: unknown) => setLoadError(e instanceof Error ? e.message : String(e)))
   }, [load])
 
+  useEffect(() => {
+    if (manifest) void checkLayers(manifest)
+  }, [manifest, checkLayers])
+
+  usePlanner()
+
   return (
-    <AppShell left={<LayerControls />} right={<RightPanelPlaceholder />} regionName={regionName}>
+    <AppShell
+      left={<LayerControls />}
+      right={<PlanPanel />}
+      regionName={manifest?.region.name}
+      notice={loadError ? `Data could not be loaded: ${loadError}` : undefined}
+    >
       <MissionMap />
     </AppShell>
   )

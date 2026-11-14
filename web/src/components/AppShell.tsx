@@ -10,6 +10,8 @@ interface AppShellProps {
   children: ReactNode
   /** Shown in the header, e.g. the region name from the manifest */
   regionName?: string
+  /** A plain-words problem to show under the header, e.g. a data file that failed to load */
+  notice?: string
 }
 
 type Drawer = 'left' | 'right' | null
@@ -18,7 +20,7 @@ type Drawer = 'left' | 'right' | null
  * Four-zone mission-control layout: header, left panel, map canvas, right panel.
  * Wide screens show all four. Narrow screens show the map with the two panels as slide-over drawers.
  */
-export default function AppShell({ left, right, children, regionName }: AppShellProps) {
+export default function AppShell({ left, right, children, regionName, notice }: AppShellProps) {
   const [open, setOpen] = useState<Drawer>(null)
   const toggle = (d: Exclude<Drawer, null>) => setOpen((cur) => (cur === d ? null : d))
 
@@ -51,6 +53,12 @@ export default function AppShell({ left, right, children, regionName }: AppShell
           </button>
         </div>
       </header>
+
+      {notice && (
+        <div role="alert" className="shrink-0 border-b border-line bg-panel-2 px-4 py-2 text-xs text-fg-muted">
+          {notice}
+        </div>
+      )}
 
       <div className="relative flex min-h-0 flex-1">
         <aside

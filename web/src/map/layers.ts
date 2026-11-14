@@ -1,8 +1,11 @@
-import type { ImageLayer, Manifest, ManifestLayer } from './dataTypes'
+import type { Layer, Manifest } from '../state/data'
 
 /** Everything here is driven by manifest.json: a new layer in the manifest needs no code change. */
 
-function isImageLayer(layer: ManifestLayer): layer is ImageLayer {
+/** A manifest layer the map can draw as one picture. */
+export type ImageLayer = Layer & { type: 'image'; coordinates: NonNullable<Layer['coordinates']> }
+
+function isImageLayer(layer: Layer): layer is ImageLayer {
   return layer.type === 'image' && Array.isArray(layer.coordinates) && layer.coordinates.length === 4
 }
 

@@ -73,8 +73,18 @@ export function walkHomeTimes(grid: Grid, assumptions: Assumption[], base: LatLo
   const cell = latLonToCell(grid.meta, base)
   if (!cell) return new Float64Array(grid.dem.length).fill(Infinity)
   const blocked = blockedMask(grid, params.slopeLimitDeg)
+  const baseCell = cell.row * grid.meta.width + cell.col
+  openStationCell(grid, blocked, baseCell) // you can always walk into base
   const model = speedModelFromAssumptions(assumptions)
-  return search(grid, blocked, model, cell.row * grid.meta.width + cell.col, { reverse: true }).cost
+  return search(grid, blocked, model, baseCell, { reverse: true }).cost
+}
+
+/**
+ * The crew stands at every station (the rover parked there), so a station's own cell is walkable even
+ * when its slope is over the limit. A cell with no height data stays closed: no time can be computed for it.
+ */
+function openStationCell(grid: Grid, blocked: Uint8Array, cell: number): void {
+  if (cell >= 0 && grid.dem[cell] !== grid.meta.nodata) blocked[cell] = 0
 }
 
 /** The walk-home field as the worker sends it: Float32, grid layout, Infinity when unreachable. */
@@ -111,6 +121,8 @@ export function planWalk(grid: Grid, assumptions: Assumption[], stations: Statio
     const c = latLonToCell(grid.meta, s)
     return c ? c.row * w + c.col : -1
   })
+  // The crew stands at every station (the rover parked there), so station cells are always open.
+  for (const c of cells) openStationCell(grid, blocked, c)
   const base = stations[0]
   const home = walkHomeTimes(grid, assumptions, base, params)
 

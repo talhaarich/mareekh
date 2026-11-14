@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises'
-import { describe, expect, it } from 'vitest'
-import { parseGridMeta, type FetchFile } from '../lib/grid'
+import { describe, expect, it, vi } from 'vitest'
+import { gridScaleWarnings, parseGridMeta, type FetchFile } from '../lib/grid'
 import { distanceM } from '../lib/mars'
-import { assumptionValue, loadAllData, parseAssumptions, parseConditions, parseManifest, parseStations } from './data'
+import { assumptionValue, createDataStore, parseAssumptions, parseConditions, parseManifest, parseStations } from './data'
 
 const repo = new URL('../../../', import.meta.url)
 
@@ -14,16 +14,73 @@ const exampleFiles: FetchFile = async (name) => {
   return new Response(await readFile(new URL(`examples/data/${dir}/${name}`, repo)))
 }
 
-describe('loadAllData', () => {
+describe('data store', () => {
+  const missing = (...names: string[]): FetchFile => (name) => (names.includes(name) ? Promise.resolve(new Response(null, { status: 404 })) : exampleFiles(name))
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {})
+
   it('loads and converts every example file', async () => {
-    const d = await loadAllData(exampleFiles)
-    expect(d.grid.meta.width).toBe(8)
+    const useStore = createDataStore(exampleFiles)
+    await useStore.getState().load()
+    const d = useStore.getState()
+    expect(d).toMatchObject({ loaded: true, gridError: null })
+    expect(d.grid?.meta.width).toBe(8)
     expect(d.stations[0]).toMatchObject({ id: 'B', dwellS: 0, sol: null })
     expect(d.stations.slice(1).every((s) => /^S\d+$/.test(s.id))).toBe(true)
-    expect(d.manifest.region.base).toEqual({ lat: 18.4446, lon: 77.4509 })
-    expect(d.manifest.layers.filter((l) => l.group === 'view' && l.default)).toHaveLength(1)
+    expect(d.manifest?.region.base).toEqual({ lat: 18.4446, lon: 77.4509 })
+    expect(d.manifest?.layers.filter((l) => l.group === 'view' && l.default)).toHaveLength(1)
     expect(d.conditions).toMatchObject({ tau: 0.4, airTempK: 211, pressurePa: 730 })
     expect(assumptionValue(d.assumptions, 'eva_time_limit_s')).toBe(21600)
+  })
+
+  it('without grid files, still loads the map and cards; only the grid reports an error', async () => {
+    const log = quiet()
+    const useStore = createDataStore(missing('dem.bin', 'slope.bin'))
+    await useStore.getState().load() // does not reject
+    const d = useStore.getState()
+    expect(d).toMatchObject({ loaded: true, grid: null })
+    expect(d.gridError).toMatch(/^(dem|slope)\.bin: HTTP 404$/)
+    expect(d.manifest).not.toBeNull()
+    expect(d.stations.length).toBeGreaterThan(1)
+    log.mockRestore()
+  })
+
+  it('with a JSON file missing, rejects and is not loaded, but keeps everything that did arrive', async () => {
+    const log = quiet()
+    const useStore = createDataStore(missing('manifest.json'))
+    await expect(useStore.getState().load()).rejects.toThrow('manifest.json: HTTP 404')
+    const d = useStore.getState()
+    expect(d).toMatchObject({ loaded: false, manifest: null, gridError: null })
+    expect(d.stations.length).toBeGreaterThan(1)
+    expect(d.grid).not.toBeNull()
+    log.mockRestore()
+  })
+
+  it('loads once: a second call returns the same promise', () => {
+    const useStore = createDataStore(exampleFiles)
+    expect(useStore.getState().load()).toBe(useStore.getState().load())
+  })
+
+  it('warns when grid cells are not res_m on the ground', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const skewed: FetchFile = async (name) => {
+      if (name !== 'grid.json') return exampleFiles(name)
+      const g = JSON.parse(await readFile(new URL('examples/data/tiny/grid.json', repo), 'utf-8'))
+      g.bounds[3] = g.bounds[1] + (g.bounds[3] - g.bounds[1]) * 1.05 // 5% too wide east-west
+      return new Response(JSON.stringify(g))
+    }
+    await createDataStore(skewed).getState().load()
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0][0]).toMatch(/^grid\.json: cells are 21\.0 m east-west on the ground, not 20 m\. Check the DEM projection\.$/)
+    warn.mockRestore()
+  })
+})
+
+describe('gridScaleWarnings', () => {
+  it('passes the example grids', async () => {
+    const R = assumptionValue(parseAssumptions(await readJsonFile('examples/data/jezero/assumptions.json')), 'mars_radius_m')
+    for (const f of ['examples/data/tiny/grid.json', 'examples/data/jezero/grid.json', 'web/public/data/jezero/grid.json']) {
+      expect(gridScaleWarnings(parseGridMeta(await readJsonFile(f)), R), f).toEqual([])
+    }
   })
 })
 

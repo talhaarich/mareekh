@@ -49,5 +49,5 @@ One answer for each question that otherwise gets guessed.
 
 ## Paths in the app
 
-- The live link is served from `/martian-map/`, not `/`. Build every data URL from `import.meta.env.BASE_URL`,
+- The live link is served from `/mareekh/`, not `/`. Build every data URL from `import.meta.env.BASE_URL`,
   for example `` `${import.meta.env.BASE_URL}data/jezero/grid.json` ``.

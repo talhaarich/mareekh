@@ -118,3 +118,22 @@ export function sample(grid: Grid, p: LatLon): { heightM: number; slopeDeg: numb
   if (heightM === grid.meta.nodata || slopeDeg === grid.meta.nodata) return null
   return { heightM, slopeDeg }
 }
+
+/**
+ * Warnings when grid cells are not res_m x res_m on the ground (more than 2% off), one per axis.
+ * The planner treats cells as square; that only holds if the DEM's projection is centred near the grid's
+ * latitude. Otherwise east-west distances, times and slopes are off by several percent: say so loudly.
+ */
+export function gridScaleWarnings(meta: GridMeta, marsRadiusM: number): string[] {
+  const [s, w, n, e] = meta.bounds
+  const rad = Math.PI / 180
+  const cellNS = ((n - s) * rad * marsRadiusM) / meta.height
+  const cellEW = ((e - w) * rad * marsRadiusM * Math.cos(((s + n) / 2) * rad)) / meta.width
+  const out: string[] = []
+  for (const [axis, m] of [['north-south', cellNS], ['east-west', cellEW]] as const) {
+    if (Math.abs(m / meta.resM - 1) > 0.02) {
+      out.push(`grid.json: cells are ${m.toFixed(1)} m ${axis} on the ground, not ${meta.resM} m. Check the DEM projection.`)
+    }
+  }
+  return out
+}

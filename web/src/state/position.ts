@@ -105,3 +105,8 @@ export function selectFixPrompt(state: Pick<PositionState, 'elapsedS' | 'uncerta
   const t = timeline()
   return t.length > 0 ? pointAt(t, state.elapsedS).stationId : null
 }
+
+// Put the estimate on base once stations have loaded (it is NaN before that).
+useData.subscribe((s, prev) => {
+  if (s.loaded && !prev.loaded) usePosition.getState().reset()
+})

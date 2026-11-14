@@ -12,6 +12,7 @@ import {
   fmtSignedDuration,
 } from './format'
 import { usePlanParams } from './planParams'
+import { PrintRouteCardButton } from './RouteCard'
 import { STATUS_STYLE } from './status'
 
 
@@ -180,6 +181,9 @@ export default function PlanPanel() {
             <p className="mt-1 text-[10px] leading-tight text-fg-muted">
               Times and distances: route model over the height grid, team speed model.
             </p>
+            <div className="mt-2">
+              <PrintRouteCardButton />
+            </div>
           </section>
         </>
       )}

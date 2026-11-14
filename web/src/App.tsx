@@ -6,6 +6,7 @@ import LayerControls from './components/LayerControls'
 import LimitsPanel from './components/LimitsPanel'
 import PlanPanel from './components/PlanPanel'
 import RehearsalPanel from './components/RehearsalPanel'
+import RouteCard from './components/RouteCard'
 import SafetyPanel from './components/SafetyPanel'
 import { usePlanner } from './components/planParams'
 import { useWalkClock } from './components/walkClock'
@@ -38,25 +39,28 @@ export default function App() {
   if (mode === 'eva') return <EvaScreen />
 
   return (
-    <AppShell
-      left={
-        <div className="space-y-8">
-          <LayerControls />
-          <FieldNotes />
-        </div>
-      }
-      right={
-        <div className="space-y-8">
-          <PlanPanel />
-          <RehearsalPanel />
-          <SafetyPanel />
-          <LimitsPanel />
-        </div>
-      }
-      regionName={manifest?.region.name}
-      notice={loadError ? `Data could not be loaded: ${loadError}` : undefined}
-    >
-      <MissionMap />
-    </AppShell>
+    <>
+      <AppShell
+        left={
+          <div className="space-y-8">
+            <LayerControls />
+            <FieldNotes />
+          </div>
+        }
+        right={
+          <div className="space-y-8">
+            <PlanPanel />
+            <RehearsalPanel />
+            <SafetyPanel />
+            <LimitsPanel />
+          </div>
+        }
+        regionName={manifest?.region.name}
+        notice={loadError ? `Data could not be loaded: ${loadError}` : undefined}
+      >
+        <MissionMap />
+      </AppShell>
+      <RouteCard />
+    </>
   )
 }

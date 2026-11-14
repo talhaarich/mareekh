@@ -4,6 +4,7 @@
  * Each throws if called before data has loaded (check `useData().loaded` first).
  */
 
+import type { Feature, Polygon } from 'geojson'
 import { assumptionValue, useData } from '../state/data'
 import * as grid from './grid'
 import * as mars from './mars'
@@ -40,4 +41,23 @@ export function distanceM(a: LatLon, b: LatLon): number {
 /** Bearing in degrees clockwise from north, 0 to 360. */
 export function bearingDeg(from: LatLon, to: LatLon): number {
   return mars.bearingDeg(from, to)
+}
+
+/** Points around the uncertainty ring. Drawing resolution only. */
+const RING_POINTS = 64
+
+/**
+ * A circle of `radiusM` metres on Mars around `center`, as a GeoJSON polygon for the uncertainty ring.
+ * (MapLibre's circle-radius is in screen pixels, so a ring in metres must be a polygon.) Null when the radius is 0.
+ */
+export function uncertaintyRing(center: LatLon, radiusM: number): Feature<Polygon> | null {
+  if (!(radiusM > 0)) return null
+  const R = assumptionValue(useData.getState().assumptions, 'mars_radius_m')
+  const ring: [number, number][] = []
+  for (let i = 0; i < RING_POINTS; i++) {
+    const p = mars.destination(center, (360 * i) / RING_POINTS, radiusM, R)
+    ring.push([p.lon, p.lat])
+  }
+  ring.push(ring[0])
+  return { type: 'Feature', properties: { radiusM }, geometry: { type: 'Polygon', coordinates: [ring] } }
 }

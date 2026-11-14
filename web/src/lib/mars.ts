@@ -25,3 +25,13 @@ export function bearingDeg(from: LatLon, to: LatLon): number {
   const deg = Math.atan2(y, x) / DEG
   return ((deg % 360) + 360) % 360
 }
+
+/** The point `distM` metres from `p` along `bearing` degrees (clockwise from north), on a sphere of `radiusM` metres. */
+export function destination(p: LatLon, bearing: number, distM: number, radiusM: number): LatLon {
+  const d = distM / radiusM
+  const b = bearing * DEG
+  const lat1 = p.lat * DEG
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b))
+  const dLon = Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
+  return { lat: lat2 / DEG, lon: p.lon + dLon / DEG }
+}

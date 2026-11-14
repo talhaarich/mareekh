@@ -1,0 +1,108 @@
+# Configuration for building the Jezero Crater dataset for Martian Map.
+#
+# Top-level keys:
+#   out_dir: Folder where all built files (grid.json, dem.bin, slope.bin, manifest.json, overlays/) are output.
+#   region: Region metadata for manifest.json (name, bounds in [south, west, north, east] degrees, base lat/lon).
+#   dem_src: Path to the input georeferenced elevation GeoTIFF (dem_src must be in a projected CRS).
+#   clip_bounds: Bounding box [south, west, north, east] in degrees to clip from dem_src.
+#   layers: List of overlay/view layer definitions to process into PNGs or export into manifest.json.
+#     - id: Unique layer identifier (e.g. satellite, relief, topo, elevation, minerals, geology).
+#     - name: Display name in the UI.
+#     - group: "view" for base maps (exclusive) or "overlay" for data layers.
+#     - type: "image" for single PNG overlay, "terrain" for 3D elevation tiles.
+#     - src: Input file path for image layers (if missing or type="terrain", src is omitted).
+#     - url: Output relative URL/path relative to out_dir where the PNG file (or tile URL) is saved.
+#     - default: (optional) boolean indicating default view at startup.
+#     - nearest: (optional) boolean, true for nearest-neighbor resampling (class maps), false for smooth.
+#     - max_px: (optional) max pixel dimension for the output PNG.
+#     - legend: List of legend entries ({color: "#hex", label: "text"}).
+#     - credit: Data source / attribution string (required).
+#     - caveat: Data limitations / disclaimer string (required).
+
+out_dir: web/public/data/jezero
+
+region:
+  name: "Jezero Crater, western delta"
+  bounds: [18.41, 77.38, 18.512, 77.522]
+  base:
+    lat: 18.4446
+    lon: 77.4509
+
+dem_src: data/raw/jezero_dem.tif
+clip_bounds: [18.41, 77.38, 18.512, 77.522]
+
+layers:
+  - id: satellite
+    name: Satellite
+    group: view
+    type: image
+    src: data/raw/jezero_satellite.tif
+    url: overlays/satellite.png
+    default: true
+    credit: "NASA/JPL-Caltech/MSSS/USGS (CTX mosaic)"
+    caveat: "5 m per pixel. Rocks are not visible."
+
+  - id: relief
+    name: Relief
+    group: view
+    type: image
+    src: data/raw/jezero_dem.tif
+    url: overlays/relief.png
+    credit: "Derived from the CTX height map"
+    caveat: "Shading only."
+
+  - id: topo
+    name: Topo
+    group: view
+    type: image
+    src: data/raw/jezero_dem.tif
+    url: overlays/topo.png
+    credit: "Derived from the CTX height map"
+    caveat: "Contours every 10 m from 20 m data."
+
+  - id: elevation
+    name: Elevation
+    group: view
+    type: image
+    src: data/raw/jezero_dem.tif
+    url: overlays/elevation.png
+    legend:
+      - color: "#213899"
+        label: Low
+      - color: "#d13829"
+        label: High
+    credit: "Derived from the CTX height map"
+    caveat: ""
+
+  - id: minerals
+    name: Minerals
+    group: overlay
+    type: image
+    src: data/raw/jezero_minerals.tif
+    url: overlays/minerals.png
+    nearest: true
+    legend:
+      - color: "#28c8aa"
+        label: Example class A
+      - color: "#e150be"
+        label: Example class B
+    credit: "CRISM mineral map (Zenodo record 5575824)"
+    caveat: "Partial coverage. A class map, not a measurement at each point."
+
+  - id: geology
+    name: Rock units
+    group: overlay
+    type: image
+    src: data/raw/jezero_geology.tif
+    url: overlays/geology.png
+    nearest: true
+    credit: "USGS SIM 3464"
+    caveat: "Mapped at 1:75,000."
+
+  - id: terrain
+    name: 3D terrain
+    group: view
+    type: terrain
+    url: "terrain/{z}/{x}/{y}.png"
+    credit: "Derived from the CTX height map"
+    caveat: "Should item."

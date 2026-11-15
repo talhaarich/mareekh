@@ -91,4 +91,12 @@ describe('wrapLabel', () => {
   it('leaves a single long word alone', () => {
     expect(wrapLabel('Supercalifragilisticexpialidocious', measure, 100)).toEqual(['Supercalifragilisticexpialidocious'])
   })
+
+  it('keeps labels off panel areas even at the cost of a farther spot', () => {
+    // A panel covers the right quarter; the marker sits just left of it, where its first choice (to the right) would go.
+    const panel = { x: 300, y: 0, w: 100, h: 300 }
+    const [l] = layoutLabels([{ id: 'a', ax: 280, ay: 150, w: 80, h: 20 }], { width: 400, height: 300, obstacles: [], keepOut: [panel] })
+    expect(overlapArea(l, panel)).toBe(0)
+    expect(l.x + l.w).toBeLessThanOrEqual(300)
+  })
 })

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import AppShell from './components/AppShell'
+import AppShell, { type ShellPanel } from './components/AppShell'
 import EvaScreen from './components/EvaScreen'
 import FieldNotes from './components/FieldNotes'
+import UiIcon from './components/icons'
 import LayerControls from './components/LayerControls'
 import RightPanel from './components/RightPanel'
+import { RIGHT_PANELS } from './components/rightPanels'
 import RouteCard from './components/RouteCard'
 import { usePlanner } from './components/planParams'
 import { useWalkClock } from './components/walkClock'
@@ -35,16 +37,24 @@ export default function App() {
   const mode = useView((s) => s.mode)
   if (mode === 'eva') return <EvaScreen />
 
+  const leftPanels: ShellPanel[] = [
+    { id: 'view', label: 'Map view', icon: <UiIcon name="view" />, content: <LayerControls part="view" /> },
+    { id: 'reach', label: 'Reach from base', icon: <UiIcon name="reach" />, content: <LayerControls part="reach" /> },
+    { id: 'overlay', label: 'Data overlay', icon: <UiIcon name="overlay" />, content: <LayerControls part="overlay" /> },
+    { id: 'notes', label: 'Field notes', icon: <UiIcon name="notes" />, content: <FieldNotes /> },
+  ]
+  const rightPanels: ShellPanel[] = RIGHT_PANELS.map((p) => ({
+    id: p.id,
+    label: p.label,
+    icon: <UiIcon name={p.id} />,
+    content: <RightPanel panel={p.id} />,
+  }))
+
   return (
     <>
       <AppShell
-        left={
-          <div className="space-y-8">
-            <LayerControls />
-            <FieldNotes />
-          </div>
-        }
-        right={<RightPanel />}
+        leftPanels={leftPanels}
+        rightPanels={rightPanels}
         regionName={manifest?.region.name}
         notice={loadError ? `Data could not be loaded: ${loadError}` : undefined}
       >

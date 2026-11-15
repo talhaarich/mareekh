@@ -31,7 +31,7 @@ export default function PinEditor() {
       data-map-obstacle
       role="dialog"
       aria-label={`${pinTypeLabel(pin.type)} pin note`}
-      className="absolute left-3 top-3 z-10 w-72 space-y-2 rounded-md border border-line bg-panel/95 p-3 text-sm text-fg shadow-lg"
+      className="absolute left-[calc(var(--mm-inset-left,0px)+0.75rem)] top-[calc(var(--mm-inset-top,0px)+0.75rem)] z-10 w-72 space-y-2 rounded-md border border-line bg-panel/95 p-3 text-sm text-fg shadow-lg"
     >
       <div className="flex items-center gap-2">
         <PinGlyph type={pin.type} />

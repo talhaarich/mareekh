@@ -35,4 +35,16 @@ describe('edge arrow', () => {
   it('is null for a point that cannot be projected', () => {
     expect(edgeArrow({ x: NaN, y: 0 }, W, H, INSET)).toBeNull()
   })
+
+  it('keeps out of strips covered by panels, pointing from the centre of the free area', () => {
+    const pad = { top: 50, right: 340, bottom: 0, left: 60 }
+    // A point under the right-hand panel counts as off screen.
+    const a = edgeArrow({ x: 700, y: 300 }, W, H, INSET, pad)!
+    expect(a.x).toBeCloseTo(W - pad.right - INSET, 9)
+    expect(a.angleDeg).toBeCloseTo((Math.atan2(300 - (50 + 600) / 2, 700 - (60 + 460) / 2) * 180) / Math.PI, 9)
+    // Far up: stays below the top strip.
+    expect(edgeArrow({ x: 230, y: -5000 }, W, H, INSET, pad)!.y).toBeCloseTo(pad.top + INSET, 9)
+    // In the free area: no arrow.
+    expect(edgeArrow({ x: 200, y: 300 }, W, H, INSET, pad)).toBeNull()
+  })
 })

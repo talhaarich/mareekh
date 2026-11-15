@@ -188,6 +188,19 @@ export default function MissionMap() {
   useEffect(() => setGroundAvailable(dem !== null && gridLoaded), [dem, gridLoaded, setGroundAvailable])
   const groundWas = useRef(groundOn)
 
+  // Panels float over the map (AppShell). Labels and the position arrow keep out of the strips they cover,
+  // and the map re-measures itself whenever the layout changes (panels, full screen).
+  const mapInsets = useInteraction((s) => s.mapInsets)
+  const panelAreas = useInteraction((s) => s.panelAreas)
+  useEffect(() => {
+    if (mapReady) mapRef.current?.resize()
+  }, [mapReady, mapInsets])
+  useEffect(() => {
+    const onFull = () => mapRef.current?.resize()
+    document.addEventListener('fullscreenchange', onFull)
+    return () => document.removeEventListener('fullscreenchange', onFull)
+  }, [])
+
   // Sky, fog and hillshade colours from tokens.css (MapLibre paints on a canvas, so no CSS variables).
   const look = useMemo(
     () => ({
@@ -520,7 +533,7 @@ export default function MissionMap() {
         )}
 
         {/* Hidden in the ground view: zooming would move the viewer off the spot they stand on. */}
-        {!groundOn && <NavigationControl position="top-right" showCompass visualizePitch />}
+        {!groundOn && <NavigationControl position="bottom-right" showCompass visualizePitch />}
       </MapGL>
 
       {/* The screen-space labels are off in the ground view; station and base markers stay. */}
@@ -532,6 +545,7 @@ export default function MissionMap() {
           items={labelItems}
           avoidLines={routePaths}
           relayoutKey={`${keyOpen}-${inspectAt?.lat}-${inspectAt?.lon}`}
+          keepOut={panelAreas}
         />
       )}
 
@@ -543,6 +557,7 @@ export default function MissionMap() {
         containerRef={containerRef}
         ready={mapReady}
         position={showPosition ? estimate : null}
+        padding={mapInsets}
         onSelect={() => {
           if (!useInteraction.getState().ground) mapRef.current?.flyTo({ center: [estimate.lon, estimate.lat], duration: 800 })
         }}
@@ -558,7 +573,7 @@ export default function MissionMap() {
         <div
           data-map-obstacle
           role="status"
-          className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-md border border-fg-muted bg-panel/95 px-3 py-1.5 text-xs text-fg shadow"
+          className="pointer-events-none absolute left-1/2 top-[calc(var(--mm-inset-top,0px)+0.75rem)] z-20 -translate-x-1/2 rounded-md border border-fg-muted bg-panel/95 px-3 py-1.5 text-xs text-fg shadow"
         >
           Click the map to drop a {pinTypeLabel(pinDropType).toLowerCase()} pin · Esc cancels
         </div>
@@ -577,14 +592,14 @@ export default function MissionMap() {
             data-map-obstacle
             onClick={() => setKeyOpen(true)}
             aria-expanded={false}
-            className="absolute bottom-3 left-3 z-20 rounded-[3px] border border-line bg-panel/90 px-3 py-1.5 text-xs font-medium text-fg backdrop-blur hover:border-fg-muted"
+            className="absolute bottom-[calc(var(--mm-inset-bottom,0px)+0.75rem)] left-[calc(var(--mm-inset-left,0px)+0.75rem)] z-20 rounded-[3px] border border-line bg-panel/90 px-3 py-1.5 text-xs font-medium text-fg backdrop-blur hover:border-fg-muted"
           >
             Map key ▸
           </button>
         ) : (
         <div
           data-map-obstacle
-          className="absolute bottom-3 left-3 z-20 max-h-[55%] max-w-xs space-y-3 overflow-y-auto rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
+          className="absolute bottom-[calc(var(--mm-inset-bottom,0px)+0.75rem)] left-[calc(var(--mm-inset-left,0px)+0.75rem)] z-20 max-h-[55%] max-w-[min(20rem,calc(100%-var(--mm-inset-left,0px)-var(--mm-inset-right,0px)-1.5rem))] space-y-3 overflow-y-auto rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
         >
           <div className="flex items-center justify-between">
             <span className="font-display text-[13px] font-semibold uppercase tracking-[0.08em] text-fg">Map key</span>

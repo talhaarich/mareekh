@@ -32,6 +32,13 @@ interface InteractionState {
   ground: { at: { lat: number; lon: number }; stationId: string | null; seq: number } | null
   /** Whether the ground view can open: the map has 3D height tiles and the height grid has loaded. Set by the map. */
   groundAvailable: boolean
+  /**
+   * Pixels along each edge of the map covered by the floating panels, rails and top bar (set by AppShell).
+   * Labels and the position arrow keep out of these strips.
+   */
+  mapInsets: MapInsets
+  /** The floating panels, rails and top-bar boxes themselves, in map pixels: labels keep off exactly these. */
+  panelAreas: PanelArea[]
 
   setHoverLeg: (i: number | null) => void
   /** Opening a station card closes the pin editor: one card over the map at a time. */
@@ -48,7 +55,24 @@ interface InteractionState {
   standHere: (at: { lat: number; lon: number }, stationId: string | null) => void
   leaveGround: () => void
   setGroundAvailable: (on: boolean) => void
+  setMapInsets: (insets: MapInsets, areas: PanelArea[]) => void
 }
+
+export interface PanelArea {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface MapInsets {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+export const NO_INSETS: MapInsets = { top: 0, right: 0, bottom: 0, left: 0 }
 
 export const useInteraction = create<InteractionState>()((set, get) => ({
   hoverLeg: null,
@@ -62,6 +86,8 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   cameraPreset: null,
   ground: null,
   groundAvailable: false,
+  mapInsets: NO_INSETS,
+  panelAreas: [],
 
   setHoverLeg: (i) => set({ hoverLeg: i }),
   selectStation: (id) => set(id === null ? { selectedStationId: null } : { selectedStationId: id, editingPinId: null }),
@@ -80,4 +106,12 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
     }),
   leaveGround: () => set({ ground: null }),
   setGroundAvailable: (on) => set({ groundAvailable: on }),
+  setMapInsets: (insets, areas) => {
+    const cur = get().mapInsets
+    if (cur.top !== insets.top || cur.right !== insets.right || cur.bottom !== insets.bottom || cur.left !== insets.left) {
+      set({ mapInsets: insets })
+    }
+    const key = (a: PanelArea[]) => a.map((r) => `${r.x},${r.y},${r.w},${r.h}`).join(';')
+    if (key(get().panelAreas) !== key(areas)) set({ panelAreas: areas })
+  },
 }))

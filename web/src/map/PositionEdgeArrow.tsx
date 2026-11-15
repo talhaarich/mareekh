@@ -10,6 +10,8 @@ interface Props {
   /** The simulated position, or null when it is not shown. */
   position: { lat: number; lon: number } | null
   onSelect: () => void
+  /** Strips along each edge covered by panels outside the map (pixels); the arrow stays clear of them. */
+  padding?: { top: number; right: number; bottom: number; left: number }
 }
 
 /** Distance kept between the arrow's centre and the map edge, px. Clears the zoom buttons' gutter. */
@@ -19,7 +21,7 @@ const INSET = 28
  * When the simulated position is off screen, an arrow at the map edge points to it. Click to fly there.
  * Marked data-map-obstacle so labels stay clear of it.
  */
-export default function PositionEdgeArrow({ mapRef, containerRef, ready, position, onSelect }: Props) {
+export default function PositionEdgeArrow({ mapRef, containerRef, ready, position, onSelect, padding }: Props) {
   const [arrow, setArrow] = useState<EdgeArrow | null>(null)
   const frame = useRef(0)
 
@@ -34,7 +36,7 @@ export default function PositionEdgeArrow({ mapRef, containerRef, ready, positio
         return
       }
       const p = map.project([position.lon, position.lat])
-      setArrow(edgeArrow(p, container.clientWidth, container.clientHeight, INSET))
+      setArrow(edgeArrow(p, container.clientWidth, container.clientHeight, INSET, padding))
     }
     const schedule = () => {
       if (frame.current === 0) frame.current = requestAnimationFrame(run)
@@ -48,7 +50,7 @@ export default function PositionEdgeArrow({ mapRef, containerRef, ready, positio
       if (frame.current !== 0) cancelAnimationFrame(frame.current)
       frame.current = 0
     }
-  }, [ready, position, mapRef, containerRef])
+  }, [ready, position, padding, mapRef, containerRef])
 
   if (!arrow) return null
   return (

@@ -1,7 +1,6 @@
 import { bearingDeg, distanceM } from '../lib/helpers'
 import { useInteraction } from '../map/interaction'
 import { useData } from '../state/data'
-import { PanelTitle } from './controls'
 import { fmtBearing, fmtDistance } from './format'
 import { defaultStops, useWalkStops } from './walkStops'
 
@@ -25,8 +24,7 @@ export default function Destinations() {
 
   return (
     <section aria-label="Destinations" className="space-y-2.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <PanelTitle>Destinations</PanelTitle>
+      <div>
         <span className="text-xs text-fg-muted">
           {inWalk.size - 1} of {stops.length} in the walk
         </span>
@@ -35,7 +33,7 @@ export default function Destinations() {
         {stops.map((s) => {
           const on = inWalk.has(s.id)
           return (
-            <li key={s.id} className="flex items-center gap-2.5 px-2.5 py-2">
+            <li key={s.id} className="flex items-center gap-2.5 px-2.5 py-1">
               <input
                 type="checkbox"
                 className="h-4 w-4 shrink-0 accent-brand"

@@ -53,7 +53,8 @@ export default function RehearsalPanel() {
             <button
               type="button"
               onClick={() => {
-                if (!playing && elapsedS >= totalS) usePosition.getState().reset() // play again from the start
+                // At the end (no next stop): play again from the start.
+                if (!playing && elapsedS > 0 && nextStop === null) usePosition.getState().reset()
                 setPlaying(!playing)
               }}
               className="min-w-16 rounded border border-route px-3 py-1 text-sm font-semibold text-route"
@@ -92,7 +93,7 @@ export default function RehearsalPanel() {
             <input
               type="range"
               min={0}
-              max={totalS}
+              max={Math.ceil(totalS)} // rounded up so the end of the slider reaches the end of the walk
               step={1}
               value={Math.min(elapsedS, totalS)}
               onChange={(e) => usePosition.getState().simulateTo(Number(e.target.value))}

@@ -44,7 +44,12 @@ export interface LayoutOptions {
   lines?: Segment[]
   /** Pixel radius kept clear around every marker. */
   markerRadius?: number
+  /** Areas covered by panels over the map. Covering them costs KEEP_OUT_WEIGHT times more than covering a marker or label. */
+  keepOut?: Rect[]
 }
+
+/** How much worse covering a panel area is than covering another label. */
+export const KEEP_OUT_WEIGHT = 10
 
 export function overlapArea(a: Rect, b: Rect): number {
   const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
@@ -118,6 +123,7 @@ export function layoutLabels(inputs: LabelInput[], opts: LayoutOptions): PlacedL
         let overlap = r.w * r.h - overlapArea(r, screen) // the part off screen counts as overlap
         for (const f of fixed) overlap += overlapArea(r, f)
         for (const t of taken) overlap += overlapArea(r, t)
+        for (const ko of opts.keepOut ?? []) overlap += KEEP_OUT_WEIGHT * overlapArea(r, ko)
         if (opts.lines) for (const s of opts.lines) overlap += LINE_WEIGHT * segmentInRect(s, r)
         const cost = overlap * 1000 + di * 30 + k * 8
         if (cost < bestCost) {

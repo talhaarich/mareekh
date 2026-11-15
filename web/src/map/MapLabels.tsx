@@ -22,6 +22,8 @@ interface Props {
   avoidLines?: { lat: number; lon: number }[][]
   /** Changes when something the labels must avoid changes size (e.g. the map key opens or closes). */
   relayoutKey?: unknown
+  /** Boxes covered by panels outside the map (map pixels); labels keep out of them. */
+  keepOut?: Rect[]
 }
 
 const LINE_HEIGHT = 15 // px per text line inside a label
@@ -50,7 +52,7 @@ function relativeRect(el: Element, origin: DOMRect): Rect {
  * Labels with leader lines, laid out in screen space on every pan and zoom.
  * Anything marked data-map-obstacle (cards, the colour key) and MapLibre's own controls are kept clear.
  */
-export default function MapLabels({ mapRef, containerRef, ready, items, avoidLines, relayoutKey }: Props) {
+export default function MapLabels({ mapRef, containerRef, ready, items, avoidLines, relayoutKey, keepOut }: Props) {
   const [placed, setPlaced] = useState<PlacedLabel[]>([])
   const frame = useRef(0)
 
@@ -74,11 +76,17 @@ export default function MapLabels({ mapRef, containerRef, ready, items, avoidLin
     const run = () => {
       frame.current = 0
       const origin = container.getBoundingClientRect()
-      const inputs: LabelInput[] = items.map((i) => {
+      const { width: W, height: H } = origin
+      const panels = keepOut ?? []
+      // A marker under a panel is hidden by it: so is its label.
+      const covered = (x: number, y: number) => panels.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+      const inputs: LabelInput[] = []
+      for (const i of items) {
         const p = map.project([i.lon, i.lat])
+        if (covered(p.x, p.y)) continue
         const s = shapes.get(i.id)
-        return { id: i.id, ax: p.x, ay: p.y, w: s?.w ?? 80, h: s?.h ?? LINE_HEIGHT + LABEL_VPAD }
-      })
+        inputs.push({ id: i.id, ax: p.x, ay: p.y, w: s?.w ?? 80, h: s?.h ?? LINE_HEIGHT + LABEL_VPAD })
+      }
       const lines: Segment[] = []
       for (const path of avoidLines ?? []) {
         let prev: { x: number; y: number } | null = null
@@ -92,7 +100,7 @@ export default function MapLabels({ mapRef, containerRef, ready, items, avoidLin
       const obstacles = Array.from(
         container.querySelectorAll('[data-map-obstacle], .maplibregl-ctrl-group'),
       ).map((el) => relativeRect(el, origin))
-      setPlaced(layoutLabels(inputs, { width: origin.width, height: origin.height, obstacles, lines }))
+      setPlaced(layoutLabels(inputs, { width: W, height: H, obstacles, lines, keepOut: panels }))
     }
     const schedule = () => {
       if (frame.current === 0) frame.current = requestAnimationFrame(run)
@@ -107,7 +115,7 @@ export default function MapLabels({ mapRef, containerRef, ready, items, avoidLin
       if (frame.current !== 0) cancelAnimationFrame(frame.current)
       frame.current = 0
     }
-  }, [ready, items, shapes, avoidLines, relayoutKey, mapRef, containerRef])
+  }, [ready, items, shapes, avoidLines, relayoutKey, keepOut, mapRef, containerRef])
 
   const byId = new Map(items.map((i) => [i.id, i]))
 

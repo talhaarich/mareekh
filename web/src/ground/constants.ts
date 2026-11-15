@@ -102,6 +102,8 @@ export const NEAR_M = 0.1
 export const FAR_M = 6000
 /** ILLUSTRATIVE. You stay this far inside the patch and the grid, metres. */
 export const EDGE_MARGIN_M = 10
+/** ILLUSTRATIVE. The view fades in over this long when it opens, milliseconds. */
+export const FADE_IN_MS = 450
 /** ILLUSTRATIVE. Within this distance of a station you are "at" it (its rover photo shows), metres. */
 export const AT_STATION_M = 30
 

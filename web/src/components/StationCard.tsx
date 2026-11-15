@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { openGroundScene } from '../ground/open'
 import { bearingDeg, distanceM, walkHomeS } from '../lib/helpers'
 import { useInteraction } from '../map/interaction'
+import { stepStop, walkOrder } from '../map/stationFlight'
 import { useData, type Photo } from '../state/data'
 import { usePlan } from '../state/plan'
 import { defaultStops, useWalkStops } from './walkStops'
@@ -47,12 +48,24 @@ function Card({ id }: { id: string }) {
   const inWalk = new Set(included ?? defaultStops(stations)).has(id)
   const walkHome = useWalkHome(station?.lat ?? NaN, station?.lon ?? NaN)
   const gridLoaded = useData((s) => s.grid !== null)
+  const legs = usePlan((s) => s.result?.legs)
+  const touring = useInteraction((s) => s.tour !== null)
+  const startTour = useInteraction((s) => s.startTour)
+  const stopTour = useInteraction((s) => s.stopTour)
   if (!station || !base) return null
   const isBase = station.id === base.id
 
   const here = { lat: station.lat, lon: station.lon }
   const from = { lat: base.lat, lon: base.lon }
   const walkHomeText = Number.isNaN(walkHome) ? 'calculating…' : walkHome === Infinity ? 'no path' : fmtDuration(walkHome)
+  // Previous and next stop in walking order; picking one flies the map there.
+  const order = walkOrder(
+    stations.map((s) => s.id),
+    legs,
+  )
+  const prevId = stepStop(order, station.id, -1)
+  const nextId = stepStop(order, station.id, 1)
+  const navButton = 'rounded-[3px] border border-line bg-panel-2 px-2 py-1 text-xs font-medium text-fg hover:border-fg-muted disabled:opacity-40'
 
   return (
     <div
@@ -85,6 +98,34 @@ function Card({ id }: { id: string }) {
           {inWalk ? 'Remove from the walk' : 'Add to the walk'}
         </button>
       )}
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-1.5" role="group" aria-label="Fly between stations">
+        <button
+          type="button"
+          disabled={touring || !prevId}
+          onClick={() => prevId && select(prevId)}
+          aria-label={`Fly to the previous stop, ${prevId}`}
+          className={`${navButton} text-left`}
+        >
+          ◀ {prevId}
+        </button>
+        <button
+          type="button"
+          onClick={() => (touring ? stopTour() : startTour())}
+          title={touring ? 'Stop the tour (or touch the map, or Esc)' : 'Fly round the walk, stop by stop, and back here'}
+          className={`${navButton} ${touring ? 'border-route text-route' : ''}`}
+        >
+          {touring ? 'Stop the tour' : 'Fly the walk'}
+        </button>
+        <button
+          type="button"
+          disabled={touring || !nextId}
+          onClick={() => nextId && select(nextId)}
+          aria-label={`Fly to the next stop, ${nextId}`}
+          className={`${navButton} text-right`}
+        >
+          {nextId} ▶
+        </button>
+      </div>
       <button
         type="button"
         disabled={!gridLoaded}
@@ -111,7 +152,11 @@ function Card({ id }: { id: string }) {
       <p className="text-[10px] leading-tight text-fg-muted">
         Range and bearing: straight line on the Mars sphere from the station list. Walk home: route model.
         Time at station: station list.
-        {station.sol !== null ? ` Position taken from rover sol ${station.sol}.` : ' Position from the USGS geologic map (SIM 3464): a mapped feature, not a rover stop.'}
+        {isBase
+          ? " Position set by the team near Perseverance's landing site (jezero.yaml)."
+          : station.sol !== null
+            ? ` Position taken from rover sol ${station.sol}.`
+            : ' Position from the USGS geologic map (SIM 3464): a mapped feature, not a rover stop.'}
       </p>
       {station.photos.length > 0 ? (
         <div className="grid grid-cols-1 gap-2">

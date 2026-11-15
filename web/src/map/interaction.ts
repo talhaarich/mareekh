@@ -25,6 +25,8 @@ interface InteractionState {
   inspectAt: { lat: number; lon: number } | null
   /** Camera view the 3D map should fly to; `seq` changes on every request. */
   cameraPreset: { name: CameraPreset; seq: number } | null
+  /** "Fly the walk" tour running (`seq` changes on every start), or null. */
+  tour: { seq: number } | null
   /**
    * Pixels along each edge of the map covered by the floating panels, rails and top bar (set by AppShell).
    * Labels and the position arrow keep out of these strips.
@@ -44,6 +46,8 @@ interface InteractionState {
   setPlaySpeed: (speed: number) => void
   setInspectAt: (p: { lat: number; lon: number } | null) => void
   setCameraPreset: (name: CameraPreset) => void
+  startTour: () => void
+  stopTour: () => void
   setMapInsets: (insets: MapInsets, areas: PanelArea[]) => void
 }
 
@@ -73,6 +77,7 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   playSpeed: 60,
   inspectAt: null,
   cameraPreset: null,
+  tour: null,
   mapInsets: NO_INSETS,
   panelAreas: [],
 
@@ -85,6 +90,8 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   setPlaySpeed: (speed) => set({ playSpeed: speed }),
   setInspectAt: (p) => set({ inspectAt: p }),
   setCameraPreset: (name) => set({ cameraPreset: { name, seq: (get().cameraPreset?.seq ?? 0) + 1 } }),
+  startTour: () => set({ tour: { seq: (get().tour?.seq ?? 0) + 1 } }),
+  stopTour: () => set({ tour: null }),
   setMapInsets: (insets, areas) => {
     const cur = get().mapInsets
     if (cur.top !== insets.top || cur.right !== insets.right || cur.bottom !== insets.bottom || cur.left !== insets.left) {

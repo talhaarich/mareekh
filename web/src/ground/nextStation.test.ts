@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextStationId } from './groundTarget'
+import { nextStationId } from './nextStation'
 
 // Flat-plane distance is enough to test the choice.
 const dist = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => Math.hypot(a.lat - b.lat, a.lon - b.lon)

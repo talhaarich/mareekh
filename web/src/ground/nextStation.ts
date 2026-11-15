@@ -1,6 +1,6 @@
 /**
- * Which station the ground view faces: the next one on the planned route from where the viewer stands.
- * Pure, so it can be tested without a map.
+ * The next station on the planned route from where you stand: the 3D ground view faces it and shows
+ * its range and bearing. Pure, so it can be tested without a scene.
  */
 
 import type { Leg } from '../lib/plan'

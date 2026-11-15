@@ -10,7 +10,7 @@ import { readToken } from '../map/tokens'
 import { assumptionValue, useData, type Photo } from '../state/data'
 import { usePlan } from '../state/plan'
 import { selectTimeLeftS, usePosition } from '../state/position'
-import { AT_STATION_M, FAST_TRAVEL, LOCAL_HOUR_MAX, LOCAL_HOUR_MIN, START_LOCAL_HOUR } from './constants'
+import { AT_STATION_M, FADE_IN_MS, FAST_TRAVEL, LOCAL_HOUR_MAX, LOCAL_HOUR_MIN, START_LOCAL_HOUR } from './constants'
 import { GroundSceneController, type HudState } from './scene'
 
 interface Props {
@@ -42,6 +42,7 @@ function fmtHour(h: number): string {
  */
 export default function GroundScene({ at, stationId, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const ctl = useRef<GroundSceneController | null>(null)
   const [hud, setHud] = useState<HudState | null>(null)
   const [hour, setHour] = useState(START_LOCAL_HOUR)
@@ -119,6 +120,15 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
     ctl.current?.setLocalHour(hour)
   }, [hour])
 
+  // Fade in from the map (skipped with reduced motion).
+  useEffect(() => {
+    const el = rootRef.current
+    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!el || reduce || typeof el.animate !== 'function') return
+    const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_IN_MS, easing: 'ease-out' })
+    return () => a.cancel()
+  }, [])
+
   // Esc: close the photo first, else the ground view. Captured, so the map underneath never sees it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -146,7 +156,7 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
   const walkSpeed = assumptions.some((a) => a.key === 'walk_speed_long_ms') ? assumptionValue(assumptions, 'walk_speed_long_ms') : NaN
 
   return (
-    <div role="dialog" aria-label="Simulated ground view" className="fixed inset-0 z-[1000] bg-bg font-sans text-fg">
+    <div ref={rootRef} role="dialog" aria-label="Simulated ground view" className="fixed inset-0 z-[1000] bg-bg font-sans text-fg">
       <div ref={containerRef} className="absolute inset-0" />
 
       <div

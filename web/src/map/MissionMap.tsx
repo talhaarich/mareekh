@@ -32,6 +32,7 @@ import { pinLabelText, pinTypeLabel } from './pinLabels'
 import { maplibregl } from './maplibreSetup'
 import { readToken } from './tokens'
 import { useTerrainSource } from './terrain'
+import TurnTiltControls from './TurnTiltControls'
 import { useLayerAvailability } from './useLayerAvailability'
 
 /** Credit, caveat and colour key for one layer. Every layer shown must say where it came from. */
@@ -533,6 +534,9 @@ export default function MissionMap() {
           relayoutKey={`${keyOpen}-${inspectAt?.lat}-${inspectAt?.lon}`}
         />
       )}
+
+      {/* Under the zoom buttons; hidden in the ground view, which has its own drag-to-look. */}
+      {!groundOn && <TurnTiltControls mapRef={mapRef} />}
 
       <PositionEdgeArrow
         mapRef={mapRef}

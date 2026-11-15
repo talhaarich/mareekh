@@ -119,6 +119,9 @@ export default function LayerControls() {
             { id: '3d', label: '3D', disabled: !dem || groundOn, title: !dem ? 'No height tiles built yet' : groundOn ? 'Leave the ground view first' : undefined },
           ]}
         />
+        <p className="text-[10px] leading-tight text-fg-muted">
+          Turn and tilt: right-drag, Ctrl + drag, two fingers, or the ↺ ↻ ∠ buttons on the map.
+        </p>
         {v.terrain3d && dem && (
           <>
             <Slider
@@ -134,7 +137,7 @@ export default function LayerControls() {
               note={
                 groundOn
                   ? 'The ground view uses true scale; it puts your setting back when you leave.'
-                  : 'Relative to true scale (heights in proportion to distances). Visual only. Right-drag (or two fingers) to tilt and turn.'
+                  : 'Relative to true scale (heights in proportion to distances). Visual only.'
               }
             />
             <div className="grid grid-cols-2 gap-2">

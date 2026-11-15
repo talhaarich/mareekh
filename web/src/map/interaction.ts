@@ -20,6 +20,8 @@ interface InteractionState {
   /** Walk rehearsal: whether the simulated clock is running, and how many simulated seconds pass per real second. */
   playing: boolean
   playSpeed: number
+  /** Map point whose inspector card is open, or null. */
+  inspectAt: { lat: number; lon: number } | null
 
   setHoverLeg: (i: number | null) => void
   /** Opening a station card closes the pin editor: one card over the map at a time. */
@@ -30,6 +32,7 @@ interface InteractionState {
   flyTo: (p: { lat: number; lon: number }) => void
   setPlaying: (on: boolean) => void
   setPlaySpeed: (speed: number) => void
+  setInspectAt: (p: { lat: number; lon: number } | null) => void
 }
 
 export const useInteraction = create<InteractionState>()((set, get) => ({
@@ -40,6 +43,7 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   flyTarget: null,
   playing: false,
   playSpeed: 60,
+  inspectAt: null,
 
   setHoverLeg: (i) => set({ hoverLeg: i }),
   selectStation: (id) => set(id === null ? { selectedStationId: null } : { selectedStationId: id, editingPinId: null }),
@@ -48,4 +52,5 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   flyTo: (p) => set({ flyTarget: { lat: p.lat, lon: p.lon, seq: (get().flyTarget?.seq ?? 0) + 1 } }),
   setPlaying: (on) => set({ playing: on }),
   setPlaySpeed: (speed) => set({ playSpeed: speed }),
+  setInspectAt: (p) => set({ inspectAt: p }),
 }))

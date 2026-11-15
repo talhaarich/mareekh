@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { overlayLayers, resolveBaseView, viewLayers } from '../map/layers'
 import { useLayerAvailability } from '../map/useLayerAvailability'
+import { SLOPE_OVERLAY_ID } from '../map/SlopeGridLayer'
 import { useData } from '../state/data'
 import { reachBlockedByOverlay, useView } from '../state/view'
 import type { Reach } from '../state/view'
@@ -52,6 +53,7 @@ function RadioRow({ name, label, checked, disabled = false, note, title, onSelec
 
 export default function LayerControls() {
   const manifest = useData((s) => s.manifest)
+  const hasGrid = useData((s) => s.grid !== null)
   const available = useLayerAvailability((s) => s.available)
 
   const baseView = useView((s) => s.baseView)
@@ -130,6 +132,15 @@ export default function LayerControls() {
             />
           )
         })}
+        <RadioRow
+          name="mm-overlay"
+          label="Slope grid (route planner)"
+          checked={overlay === SLOPE_OVERLAY_ID}
+          disabled={reachBlockedByOverlay(reach, SLOPE_OVERLAY_ID) || !hasGrid}
+          note={hasGrid ? undefined : 'height grid not loaded'}
+          title={reachBlockedByOverlay(reach, SLOPE_OVERLAY_ID) ? fillHint : undefined}
+          onSelect={() => setOverlay(SLOPE_OVERLAY_ID)}
+        />
         <label className={`block text-xs ${overlay === null ? 'text-fg-muted/60' : 'text-fg-muted'}`}>
           Strength: {Math.round(overlayStrength * 100)} % (display setting)
           <input

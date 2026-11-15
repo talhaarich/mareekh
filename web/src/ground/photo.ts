@@ -1,9 +1,55 @@
 /**
- * What the ground view takes from the 5 m orbital photo (the manifest's satellite picture), pure:
- * - a normal map from the photo's high-pass brightness, for lighting only (never heights or slopes);
- * - local roughness and brightness, which set how many illustrative rocks a cell gets.
+ * What the ground view takes from the 5 m orbital photo (the manifest's satellite picture), pure.
+ * The photo is greyscale and already contains shading, so it is split in two:
+ * - its low-pass (blurred) brightness, contrast-stretched, varies a regolith colour (the ground colour);
+ * - its high-pass (fine detail) becomes a normal map, for lighting only (never heights or slopes).
+ * Local contrast of the stretched photo sets how many illustrative rocks a cell gets.
  * Arrays are the photo's pixels in image order: row 0 is the north edge, column 0 the west edge.
  */
+
+/** Brightness values at fractions `lo` and `hi` of the sorted pixels (e.g. 0.02 and 0.98), via a histogram. */
+export function percentiles(lum: Float32Array, lo: number, hi: number, bins = 1024): [number, number] {
+  const hist = new Uint32Array(bins)
+  for (let i = 0; i < lum.length; i++) hist[Math.min(bins - 1, Math.max(0, Math.floor(lum[i] * bins)))]++
+  const at = (f: number) => {
+    const target = f * lum.length
+    let sum = 0
+    for (let b = 0; b < bins; b++) {
+      sum += hist[b]
+      if (sum >= target) return (b + 0.5) / bins
+    }
+    return 1
+  }
+  return [at(lo), at(hi)]
+}
+
+/** Brightness stretched so the `lo` and `hi` percentiles become 0 and 1 (clamped). */
+export function stretch(lum: Float32Array, lo: number, hi: number): Float32Array {
+  const [a, b] = percentiles(lum, lo, hi)
+  const span = b > a ? b - a : 1
+  const out = new Float32Array(lum.length)
+  for (let i = 0; i < lum.length; i++) out[i] = Math.min(1, Math.max(0, (lum[i] - a) / span))
+  return out
+}
+
+/**
+ * Ground colour bytes (RGBA, sRGB, rows bottom first like the normal map): the regolith colour times
+ * (base + gain x value) for each value of the low-pass stretched photo.
+ */
+export function colourMapRGBA(value: Float32Array, w: number, h: number, regolith: [number, number, number], base: number, gain: number): Uint8Array {
+  const out = new Uint8Array(w * h * 4)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const f = base + gain * value[y * w + x]
+      const k = ((h - 1 - y) * w + x) * 4
+      out[k] = Math.min(255, Math.round(regolith[0] * f))
+      out[k + 1] = Math.min(255, Math.round(regolith[1] * f))
+      out[k + 2] = Math.min(255, Math.round(regolith[2] * f))
+      out[k + 3] = 255
+    }
+  }
+  return out
+}
 
 /** Box blur of radius `r` pixels (edges clamped), via a summed-area table. */
 export function boxBlur(src: Float32Array, w: number, h: number, r: number): Float32Array {
@@ -32,6 +78,8 @@ export function boxBlur(src: Float32Array, w: number, h: number, r: number): Flo
 export interface PhotoFields {
   width: number
   height: number
+  /** Blurred brightness: the colour's light and dark areas, without the fine shading. */
+  low: Float32Array
   /** Brightness minus its blur: the small-scale detail (craters, ridges, boulders fields). */
   highPass: Float32Array
   /** Local mean of |highPass|: how rough the ground looks. */
@@ -59,7 +107,7 @@ export function photoFields(lum: Float32Array, w: number, h: number, blurPx: num
     sr += rough[i]
     sb += bright[i]
   }
-  return { width: w, height: h, highPass, rough, bright, meanRough: sr / (w * h), meanBright: sb / (w * h) }
+  return { width: w, height: h, low, highPass, rough, bright, meanRough: sr / (w * h), meanBright: sb / (w * h) }
 }
 
 /**
@@ -102,13 +150,11 @@ export function sampleField(field: Float32Array, w: number, h: number, u: number
 }
 
 /**
- * How many rocks a cell gets relative to the curve (ILLUSTRATIVE): more on rough or bright ground,
- * almost none on smooth dark ground. Roughness and brightness are taken relative to the photo's mean.
+ * How many rocks a cell gets relative to the curve (ILLUSTRATIVE), from the local contrast of the stretched
+ * photo relative to its mean: more where the ground looks rough, fewer where it is smooth, never fewer than
+ * `floor` (so no area is empty). Averages about 1 over the photo.
  */
-export function rockDensityFactor(rough: number, bright: number, meanRough: number, meanBright: number): number {
-  const r = meanRough > 0 ? rough / meanRough : 1
-  const b = meanBright > 0 ? bright / meanBright : 1
-  // Smooth (r well under 1) and dark (b under 1) gives nearly zero; rough or bright gives up to 2.
-  const score = 0.75 * (r - 0.6) + 0.9 * (b - 0.85)
-  return Math.min(2, Math.max(0.02, score * 2.2))
+export function rockDensityFactor(contrast: number, meanContrast: number, floor: number, cap: number): number {
+  const r = meanContrast > 0 ? contrast / meanContrast : 1
+  return Math.min(cap, Math.max(floor, floor + (1 - floor) * r))
 }

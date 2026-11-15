@@ -123,7 +123,7 @@ export default function LayerControls({ part }: { part?: LayerPart } = {}) {
             ]}
           />
           <p className="text-[10px] leading-tight text-fg-muted">
-            Turn and tilt: right-drag, Ctrl + drag, two fingers, or the ↺ ↻ ∠ buttons on the map.
+            Turn and tilt: right-drag, Ctrl + drag, two fingers, or the Turn and Tilt buttons at the bottom right.
           </p>
           {v.terrain3d && dem && (
             <>

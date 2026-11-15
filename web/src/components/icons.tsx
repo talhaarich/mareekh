@@ -91,6 +91,66 @@ const PATHS = {
       <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
     </>
   ),
+  /** Question mark in a circle */
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.4-2.8 4.2" />
+      <path d="M12 17.6v.4" />
+    </>
+  ),
+  /** Cube: 3D */
+  cube: (
+    <>
+      <path d="M12 3 4 7.5v9L12 21l8-4.5v-9L12 3Z" />
+      <path d="M4 7.5 12 12l8-4.5M12 12v9" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M12 5v14M5 12h14" />
+    </>
+  ),
+  minus: (
+    <>
+      <path d="M5 12h14" />
+    </>
+  ),
+  /** Compass needle: north */
+  north: (
+    <>
+      <path d="M12 3 8 13h8L12 3Z" />
+      <path d="M8 13l4 8 4-8" />
+    </>
+  ),
+  turnLeft: (
+    <>
+      <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+      <path d="M4 4v4h4" />
+    </>
+  ),
+  turnRight: (
+    <>
+      <path d="M20 12a8 8 0 1 1-2.4-5.7" />
+      <path d="M20 4v4h-4" />
+    </>
+  ),
+  /** Tilt toward the horizon */
+  tiltUp: (
+    <>
+      <path d="M3 19h18" />
+      <path d="M5 19 17 7" />
+      <path d="M11 7h6v6" />
+    </>
+  ),
+  /** Tilt back toward straight down */
+  tiltDown: (
+    <>
+      <path d="M3 19h18" />
+      <path d="M12 4v11" />
+      <path d="M8 11l4 4 4-4" />
+    </>
+  ),
   /** Corners in */
   exitFullscreen: (
     <>

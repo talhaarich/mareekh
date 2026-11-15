@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import MapGL, { Layer, Marker, NavigationControl, Source } from 'react-map-gl/maplibre'
+import MapGL, { Layer, Marker, Source } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import type { Feature, LineString, Polygon } from 'geojson'
 import type { StyleSpecification } from 'maplibre-gl'
@@ -33,7 +33,7 @@ import { pinLabelText, pinTypeLabel } from './pinLabels'
 import { maplibregl } from './maplibreSetup'
 import { readToken } from './tokens'
 import { useTerrainSource } from './terrain'
-import TurnTiltControls from './TurnTiltControls'
+import MapControls from './MapControls'
 import { useLayerAvailability } from './useLayerAvailability'
 
 /** Width of the station card plus its left margin, pixels (w-72 = 288 px, + 12): flights centre beside it. */
@@ -72,6 +72,14 @@ function KeyBlock({ title, layer, missing }: { title: string; layer: ImageLayer;
 function RouteLayer({ arrows }: { arrows: boolean }) {
   const result = usePlan((s) => s.result)
   const hoverLeg = useInteraction((s) => s.hoverLeg)
+  // The welcome card's "See the plan" makes the route glow and throb for a few seconds.
+  const pulsing = useInteraction((s) => s.pulse?.targets.includes('route') ?? false)
+  const [beat, setBeat] = useState(false)
+  useEffect(() => {
+    if (!pulsing) return
+    const id = window.setInterval(() => setBeat((b) => !b), 450)
+    return () => window.clearInterval(id)
+  }, [pulsing])
   const routeColor = useMemo(() => readToken('--color-route'), [])
 
   const data = useMemo(() => {
@@ -95,13 +103,18 @@ function RouteLayer({ arrows }: { arrows: boolean }) {
         id="mm-route-glow"
         type="line"
         layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-        paint={{ 'line-color': routeColor, 'line-width': 12, 'line-blur': 8, 'line-opacity': 0.35 }}
+        paint={{
+          'line-color': routeColor,
+          'line-width': pulsing ? (beat ? 30 : 16) : 12,
+          'line-blur': 8,
+          'line-opacity': pulsing ? 0.8 : 0.35,
+        }}
       />
       <Layer
         id="mm-route-line"
         type="line"
         layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-        paint={{ 'line-color': routeColor, 'line-width': 3, 'line-opacity': hoverLeg === null ? 1 : 0.45 }}
+        paint={{ 'line-color': routeColor, 'line-width': pulsing ? 5 : 3, 'line-opacity': hoverLeg === null ? 1 : 0.45 }}
       />
       <Layer
         id="mm-route-hover"
@@ -157,7 +170,8 @@ export default function MissionMap() {
   const turnBack = usePlan((s) => s.result?.turnBack ?? null)
   const legs = usePlan((s) => s.result?.legs)
   const routePaths = useMemo(() => (legs ?? []).filter((l) => l.ok).map((l) => l.path), [legs])
-  const [keyOpen, setKeyOpen] = useState(true)
+  // On a phone the map key starts folded, so it does not cover the map controls.
+  const [keyOpen, setKeyOpen] = useState(() => !(typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 639px)').matches))
   const selectStation = useInteraction((s) => s.selectStation)
   const pins = usePins((s) => s.pins)
   const included = useWalkStops((s) => s.included)
@@ -608,7 +622,6 @@ export default function MissionMap() {
           </Marker>
         )}
 
-        <NavigationControl position="bottom-right" showCompass visualizePitch />
       </MapGL>
 
       {showLabels && (
@@ -623,8 +636,8 @@ export default function MissionMap() {
         />
       )}
 
-      {/* Above the zoom buttons. */}
-      <TurnTiltControls mapRef={mapRef} />
+      {/* Zoom, turn, tilt and north, each with a caption. */}
+      <MapControls mapRef={mapRef} ready={mapReady} />
 
       <PositionEdgeArrow
         mapRef={mapRef}

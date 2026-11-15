@@ -3,6 +3,7 @@ import MapGL, { Layer, Marker, NavigationControl, Source } from 'react-map-gl/ma
 import type { MapRef } from 'react-map-gl/maplibre'
 import type { Feature, LineString, Polygon } from 'geojson'
 import type { StyleSpecification } from 'maplibre-gl'
+import Inspector from '../components/Inspector'
 import PinEditor from '../components/PinEditor'
 import StationCard from '../components/StationCard'
 import { fmtDuration } from '../components/format'
@@ -13,19 +14,17 @@ import { usePins } from '../state/pins'
 import { usePlan } from '../state/plan'
 import { usePosition } from '../state/position'
 import { useView } from '../state/view'
+import { ANCHOR_DATA, ANCHOR_OVERLAYS } from './anchors'
 import { useInteraction } from './interaction'
 import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './layers'
 import MapLabels, { type LabelItem } from './MapLabels'
 import PinGlyph from './PinGlyph'
 import PositionEdgeArrow from './PositionEdgeArrow'
+import SlopeGridLayer, { SLOPE_OVERLAY_ID, SlopeKeyBlock } from './SlopeGridLayer'
 import { pinLabelText, pinTypeLabel } from './pinLabels'
 import { maplibregl } from './maplibreSetup'
 import { readToken } from './tokens'
 import { useLayerAvailability } from './useLayerAvailability'
-
-/** Style anchors: a layer added with `beforeId` set to one of these draws just below it. */
-export const ANCHOR_OVERLAYS = 'mm-anchor-overlays'
-export const ANCHOR_DATA = 'mm-anchor-data'
 
 /** Credit, caveat and colour key for one layer. Every layer shown must say where it came from. */
 function KeyBlock({ title, layer, missing }: { title: string; layer: ImageLayer; missing: boolean }) {
@@ -126,6 +125,8 @@ export default function MissionMap() {
   const setPinDropType = useInteraction((s) => s.setPinDropType)
   const editPin = useInteraction((s) => s.editPin)
   const flyTarget = useInteraction((s) => s.flyTarget)
+  const inspectAt = useInteraction((s) => s.inspectAt)
+  const setInspectAt = useInteraction((s) => s.setInspectAt)
   const estimate = usePosition((s) => s.estimate)
   const uncertaintyM = usePosition((s) => s.uncertaintyM)
   // The position shows once a rehearsal has started (before that it sits on base).
@@ -227,10 +228,16 @@ export default function MissionMap() {
         attributionControl={false}
         cursor={pinDropType ? 'crosshair' : undefined}
         onClick={(e) => {
-          if (!pinDropType) return
-          const id = usePins.getState().addPin(pinDropType, { lat: e.lngLat.lat, lon: e.lngLat.lng })
-          setPinDropType(null)
-          editPin(id)
+          if (pinDropType) {
+            const id = usePins.getState().addPin(pinDropType, { lat: e.lngLat.lat, lon: e.lngLat.lng })
+            setPinDropType(null)
+            editPin(id)
+            return
+          }
+          // A click on a marker (station, pin, position) is that marker's, not the inspector's.
+          const target = e.originalEvent.target as Element | null
+          if (target?.closest('.maplibregl-marker')) return
+          setInspectAt({ lat: e.lngLat.lat, lon: e.lngLat.lng })
         }}
         onLoad={() => setMapReady(true)}
         style={{ width: '100%', height: '100%' }}
@@ -264,6 +271,8 @@ export default function MissionMap() {
               />
             </Source>
           ))}
+
+        <SlopeGridLayer visible={overlay === SLOPE_OVERLAY_ID} opacity={overlayStrength} />
 
         <RouteLayer />
         {showPosition && <UncertaintyRingLayer center={estimate} radiusM={uncertaintyM} />}
@@ -329,6 +338,17 @@ export default function MissionMap() {
           </Marker>
         )}
 
+        {inspectAt && (
+          <Marker latitude={inspectAt.lat} longitude={inspectAt.lon} anchor="bottom" offset={[0, -6]}>
+            <Inspector />
+          </Marker>
+        )}
+        {inspectAt && (
+          <Marker latitude={inspectAt.lat} longitude={inspectAt.lon} anchor="center">
+            <div role="img" aria-label="Inspected point" className="h-2.5 w-2.5 rounded-full border-2 border-fg bg-bg" />
+          </Marker>
+        )}
+
         <NavigationControl position="top-right" showCompass visualizePitch={false} />
       </MapGL>
 
@@ -368,7 +388,7 @@ export default function MissionMap() {
         </div>
       )}
 
-      {(activeView || activeOverlay) && (
+      {(activeView || activeOverlay || overlay === SLOPE_OVERLAY_ID) && (
         <div
           data-map-obstacle
           className="pointer-events-none absolute bottom-3 left-3 max-w-xs space-y-3 rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
@@ -377,6 +397,7 @@ export default function MissionMap() {
           {activeOverlay && (
             <KeyBlock title="Overlay" layer={activeOverlay} missing={available[activeOverlay.id] === false} />
           )}
+          {overlay === SLOPE_OVERLAY_ID && <SlopeKeyBlock />}
         </div>
       )}
     </div>

@@ -9,7 +9,8 @@ import StationCard from '../components/StationCard'
 import { defaultStops, useWalkStops } from '../components/walkStops'
 import { fmtDuration } from '../components/format'
 import { dataUrl } from '../lib/dataUrl'
-import { uncertaintyRing } from '../lib/helpers'
+import { bearingDeg, distanceM, uncertaintyRing } from '../lib/helpers'
+import type { LatLon } from '../lib/mars'
 import { useData, type LegendItem } from '../state/data'
 import { usePins } from '../state/pins'
 import { usePlan } from '../state/plan'
@@ -17,6 +18,8 @@ import { usePosition } from '../state/position'
 import { useView } from '../state/view'
 import { ANCHOR_BACKDROP, ANCHOR_DATA, ANCHOR_OVERLAYS } from './anchors'
 import { CAMERA_PRESETS } from './cameraPresets'
+import { freeAreaOffset, stationCamera, stepStop, TERRAIN_FLATTEN_MS, TOUR_DWELL_MS, walkOrder } from './stationFlight'
+import { useTerrainTransition } from './terrainTransition'
 import { addRouteArrow, ROUTE_ARROW } from './routeArrow'
 import { useInteraction } from './interaction'
 import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './layers'
@@ -32,6 +35,9 @@ import { readToken } from './tokens'
 import { useTerrainSource } from './terrain'
 import TurnTiltControls from './TurnTiltControls'
 import { useLayerAvailability } from './useLayerAvailability'
+
+/** Width of the station card plus its left margin, pixels (w-72 = 288 px, + 12): flights centre beside it. */
+const STATION_CARD_PX = 300
 
 /** Credit, caveat and colour key for one layer. Every layer shown must say where it came from. */
 function KeyBlock({ title, layer, missing }: { title: string; layer: ImageLayer; missing: boolean }) {
@@ -178,6 +184,9 @@ export default function MissionMap() {
   const exaggeration = useView((s) => s.exaggeration)
   const dem = useTerrainSource(manifest)
   const terrainOn = terrain3d && dem !== null
+  // Terrain rises when 3D turns on and flattens before it goes (still shown while flattening).
+  // (Before, "2D" only removed the terrain prop, which react-map-gl ignores: the terrain stayed on.)
+  const terrainShown = useTerrainTransition(mapRef, mapReady, terrainOn, exaggeration, 'mm-dem')
 
   // Panels float over the map (AppShell). Labels and the position arrow keep out of the strips they cover,
   // and the map re-measures itself whenever the layout changes (panels, full screen).
@@ -221,8 +230,8 @@ export default function MissionMap() {
       setCameraPreset('delta')
     } else if (manifest) {
       const [s, w, n, e] = manifest.region.bounds
-      map.easeTo({ pitch: 0, bearing: 0, duration: 600 })
-      map.fitBounds([[w, s], [e, n]], { padding: 48, duration: 800, pitch: 0, bearing: 0 })
+      // Levels and frames the walk box while the terrain flattens (same duration).
+      map.fitBounds([[w, s], [e, n]], { padding: 48, duration: TERRAIN_FLATTEN_MS, pitch: 0, bearing: 0 })
     }
   }, [mapReady, terrainOn, manifest, setCameraPreset])
   useEffect(() => {
@@ -285,6 +294,86 @@ export default function MissionMap() {
     map.flyTo({ center: [flyTarget.lon, flyTarget.lat], zoom: Math.max(map.getZoom(), 14), duration: 800 })
   }, [mapReady, flyTarget])
 
+  // Picking a station (marker, label, card, list) flies to it. In 3D the camera arrives facing along
+  // the way from the station picked before, so stepping through the walk feels like flying it.
+  const selectedId = useInteraction((s) => s.selectedStationId)
+  const flownTo = useRef<{ id: string; at: LatLon } | null>(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || !selectedId || flownTo.current?.id === selectedId) return
+    const st = stations.find((x) => x.id === selectedId)
+    if (!st) return
+    const to = { lat: st.lat, lon: st.lon }
+    const cam = stationCamera({
+      to,
+      from: flownTo.current?.at ?? null,
+      terrain3d: terrainOn,
+      currentZoom: map.getZoom(),
+      currentBearing: map.getBearing(),
+      distanceM,
+      bearingDeg,
+    })
+    // Centre the station in the area left free by the panels and the station card (w-72 plus its margin).
+    const ins = useInteraction.getState().mapInsets
+    const offset = freeAreaOffset({ ...ins, left: ins.left + STATION_CARD_PX })
+    map.flyTo({ ...cam, offset, curve: 1.5 })
+    flownTo.current = { id: selectedId, at: to }
+  }, [mapReady, selectedId, stations, terrainOn])
+  useEffect(() => {
+    if (selectedId === null) flownTo.current = flownTo.current && { ...flownTo.current, id: '' }
+  }, [selectedId])
+
+  // "Fly the walk": from the open station round the walk and back, pausing at each. Any touch of the map,
+  // Esc or the Stop button ends it.
+  const tour = useInteraction((s) => s.tour)
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!mapReady || !map || !tour) return
+    const order = walkOrder(
+      stations.map((x) => x.id),
+      usePlan.getState().result?.legs,
+    )
+    const startId = useInteraction.getState().selectedStationId ?? order[0]
+    let current: string | null = startId
+    let stopped = false
+    let timer = 0
+    const stop = () => {
+      if (stopped) return
+      stopped = true
+      useInteraction.getState().stopTour()
+    }
+    const next = () => {
+      if (stopped) return
+      current = stepStop(order, current, 1)
+      if (!current) return stop()
+      const last = current === startId
+      map.once('moveend', () => {
+        if (!stopped) timer = window.setTimeout(last ? stop : next, last ? 0 : TOUR_DWELL_MS)
+      })
+      useInteraction.getState().selectStation(current)
+    }
+    const onUser = (e: { originalEvent?: unknown }) => {
+      if (e.originalEvent) stop()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') stop()
+    }
+    map.on('mousedown', onUser)
+    map.on('touchstart', onUser)
+    map.on('wheel', onUser)
+    window.addEventListener('keydown', onKey)
+    if (useInteraction.getState().selectedStationId !== startId) useInteraction.getState().selectStation(startId)
+    timer = window.setTimeout(next, 300)
+    return () => {
+      stopped = true
+      window.clearTimeout(timer)
+      map.off('mousedown', onUser)
+      map.off('touchstart', onUser)
+      map.off('wheel', onUser)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [mapReady, tour, stations])
+
   // Everything that gets a label: base, stations, pins, turn-back point.
   const labelItems = useMemo<LabelItem[]>(() => {
     const items: LabelItem[] = stations.map((s) => ({
@@ -323,8 +412,8 @@ export default function MissionMap() {
         initialViewState={{ latitude: 18.4446, longitude: 77.4509, zoom: 11 }}
         attributionControl={false}
         maxPitch={80}
-        terrain={terrainOn ? { source: 'mm-dem', exaggeration } : undefined}
-        sky={terrainOn ? look.sky : undefined}
+        // No terrain prop: useTerrainTransition adds, raises, flattens and removes the terrain itself.
+        sky={terrainShown ? look.sky : undefined}
         cursor={pinDropType ? 'crosshair' : undefined}
         onClick={(e) => {
           if (pinDropType) {

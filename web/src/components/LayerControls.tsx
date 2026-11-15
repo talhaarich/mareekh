@@ -153,9 +153,6 @@ export default function LayerControls() {
             />
           )
         })}
-        {reach !== 'off' && (
-          <p className="text-xs text-fg-muted">Drawing on the map is not wired yet.</p>
-        )}
       </Group>
 
       <Group title="Data overlay">

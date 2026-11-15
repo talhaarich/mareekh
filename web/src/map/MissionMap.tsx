@@ -20,6 +20,8 @@ import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './l
 import MapLabels, { type LabelItem } from './MapLabels'
 import PinGlyph from './PinGlyph'
 import PositionEdgeArrow from './PositionEdgeArrow'
+import { useReachLabels } from './reach'
+import ReachLayer, { ReachKeyBlock } from './ReachLayer'
 import SlopeGridLayer, { SLOPE_OVERLAY_ID, SlopeKeyBlock } from './SlopeGridLayer'
 import { pinLabelText, pinTypeLabel } from './pinLabels'
 import { maplibregl } from './maplibreSetup'
@@ -145,6 +147,8 @@ export default function MissionMap() {
   const overlay = useView((s) => s.overlay)
   const overlayStrength = useView((s) => s.overlayStrength)
   const showLabels = useView((s) => s.showLabels)
+  const reach = useView((s) => s.reach)
+  const reachLabels = useReachLabels()
   const terrain3d = useView((s) => s.terrain3d)
   const exaggeration = useView((s) => s.exaggeration)
   const dem = useTerrainSource(manifest)
@@ -239,6 +243,7 @@ export default function MissionMap() {
     for (const p of pins) {
       items.push({ id: `pin-${p.id}`, lat: p.lat, lon: p.lon, text: pinLabelText(p), onSelect: () => editPin(p.id) })
     }
+    items.push(...reachLabels)
     if (showPosition) {
       items.push({ id: 'position', lat: estimate.lat, lon: estimate.lon, text: 'Simulated position' })
     }
@@ -251,7 +256,7 @@ export default function MissionMap() {
       })
     }
     return items
-  }, [stations, pins, turnBack, selectStation, editPin, showPosition, estimate])
+  }, [stations, pins, turnBack, selectStation, editPin, showPosition, estimate, reachLabels])
 
   const viewMissing = activeView !== null && available[activeView.id] === false
 
@@ -354,6 +359,7 @@ export default function MissionMap() {
         )}
 
         <SlopeGridLayer visible={overlay === SLOPE_OVERLAY_ID} opacity={overlayStrength} />
+        <ReachLayer />
 
         <RouteLayer />
         {showPosition && <UncertaintyRingLayer center={estimate} radiusM={uncertaintyM} />}
@@ -469,7 +475,7 @@ export default function MissionMap() {
         </div>
       )}
 
-      {(activeView || activeOverlay || overlay === SLOPE_OVERLAY_ID) && (
+      {(activeView || activeOverlay || overlay === SLOPE_OVERLAY_ID || reach !== 'off') && (
         <div
           data-map-obstacle
           className="pointer-events-none absolute bottom-3 left-3 max-w-xs space-y-3 rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
@@ -479,6 +485,7 @@ export default function MissionMap() {
             <KeyBlock title="Overlay" layer={activeOverlay} missing={available[activeOverlay.id] === false} />
           )}
           {overlay === SLOPE_OVERLAY_ID && <SlopeKeyBlock />}
+          {reach !== 'off' && <ReachKeyBlock />}
         </div>
       )}
     </div>

@@ -174,8 +174,6 @@ export default function LayerControls() {
       </Group>
 
       <Group title="Show on map">
-        <Check label="Wind arrows" checked={v.showWind} onChange={v.setShowWind} />
-        {v.showWind && <p className="text-xs text-fg-muted">No wind data file in the data contracts yet.</p>}
         <Check label="Labels" checked={v.showLabels} onChange={v.setShowLabels} />
       </Group>
     </div>

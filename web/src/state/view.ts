@@ -15,7 +15,6 @@ export interface ViewState {
   overlay: string | null
   /** 0 to 1 */
   overlayStrength: number
-  showWind: boolean
   showLabels: boolean
   mode: Mode
   /** 3D terrain on (MapLibre terrain from the manifest's terrain layer). */
@@ -29,7 +28,6 @@ export interface ViewState {
   /** Returns false (and changes nothing) if it would put two colour fills on at once. */
   setOverlay: (id: string | null) => boolean
   setOverlayStrength: (strength: number) => void
-  setShowWind: (on: boolean) => void
   setShowLabels: (on: boolean) => void
   setMode: (mode: Mode) => void
   setTerrain3d: (on: boolean) => void
@@ -55,7 +53,6 @@ export const useView = create<ViewState>()((set, get) => ({
   reach: 'off',
   overlay: null,
   overlayStrength: 0.6,
-  showWind: false,
   showLabels: true,
   mode: 'plan',
   terrain3d: false,
@@ -73,7 +70,6 @@ export const useView = create<ViewState>()((set, get) => ({
     return true
   },
   setOverlayStrength: (strength) => set({ overlayStrength: Math.min(1, Math.max(0, strength)) }),
-  setShowWind: (on) => set({ showWind: on }),
   setShowLabels: (on) => set({ showLabels: on }),
   setMode: (mode) => set({ mode }),
   setTerrain3d: (on) => set({ terrain3d: on }),

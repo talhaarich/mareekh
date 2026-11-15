@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxBlur, normalMapRGBA, photoFields, rockDensityFactor, sampleField } from './photo'
+import { boxBlur, colourMapRGBA, normalMapRGBA, percentiles, photoFields, rockDensityFactor, sampleField, stretch } from './photo'
 
 const W = 40
 const H = 30
@@ -42,16 +42,34 @@ describe('photo fields', () => {
   })
 })
 
+describe('stretch and colour', () => {
+  it('finds the 2nd and 98th percentiles and stretches them to 0 and 1', () => {
+    const lum = new Float32Array(1000).map((_, i) => 0.2 + 0.4 * (i / 999)) // 0.2 to 0.6, evenly
+    const [lo, hi] = percentiles(lum, 0.02, 0.98)
+    expect(lo).toBeCloseTo(0.208, 2)
+    expect(hi).toBeCloseTo(0.592, 2)
+    const s = stretch(lum, 0.02, 0.98)
+    expect(s[0]).toBe(0) // below the 2nd percentile: clamped
+    expect(s[999]).toBe(1)
+    expect(s[500]).toBeCloseTo(0.5, 1)
+  })
+
+  it('colours as regolith x (0.7 + 0.6 x value), rows bottom first', () => {
+    const v = new Float32Array([0, 1, 0.5, 0.5]) // 2 x 2, top row first
+    const c = colourMapRGBA(v, 2, 2, [180, 140, 100], 0.7, 0.6)
+    // Bottom row of the picture (0.5, 0.5) comes first.
+    expect([c[0], c[1], c[2], c[3]]).toEqual([180, 140, 100, 255])
+    // Top-left (value 0): 0.7 x; top-right (value 1): 1.3 x, clamped at 255.
+    expect([c[8], c[9], c[10]]).toEqual([126, 98, 70])
+    expect([c[12], c[13], c[14]]).toEqual([234, 182, 130])
+  })
+})
+
 describe('rock density from the photo', () => {
-  it('is almost none on smooth dark ground, more on rough or bright ground', () => {
-    const smoothDark = rockDensityFactor(0.3, 0.7, 1, 1)
-    const average = rockDensityFactor(1, 1, 1, 1)
-    const rough = rockDensityFactor(2, 1, 1, 1)
-    const bright = rockDensityFactor(1, 1.4, 1, 1)
-    expect(smoothDark).toBeLessThan(0.05)
-    expect(average).toBeGreaterThan(smoothDark)
-    expect(rough).toBeGreaterThan(average)
-    expect(bright).toBeGreaterThan(average)
-    expect(rockDensityFactor(9, 9, 1, 1)).toBeLessThanOrEqual(2)
+  it('follows local contrast, never below the floor, averaging about 1', () => {
+    expect(rockDensityFactor(0, 1, 0.3, 2)).toBe(0.3) // smooth ground still has some rocks
+    expect(rockDensityFactor(1, 1, 0.3, 2)).toBeCloseTo(1, 12) // average contrast: the curve's count
+    expect(rockDensityFactor(2, 1, 0.3, 2)).toBeCloseTo(1.7, 12)
+    expect(rockDensityFactor(10, 1, 0.3, 2)).toBe(2)
   })
 })

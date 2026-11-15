@@ -53,8 +53,17 @@ export const LOD_LEVELS: { spacingM: number; withinM: number }[] = [
 export const SKIRT_SPACINGS = 3
 // ---------- Ground picture ----------
 
-/** ILLUSTRATIVE. How far the photo's grey is tinted toward the regolith colour (at most 20 %). */
-export const PHOTO_TINT = 0.2
+/**
+ * ILLUSTRATIVE. Ground colour. The orbital photo is greyscale, so it only varies a regolith colour:
+ * colour = regolith x (COLOUR_BASE + COLOUR_GAIN x value), value being the photo's blurred brightness
+ * stretched between its PHOTO_STRETCH_LO and _HI percentiles. The regolith is the dusty-brown token
+ * lightened REGOLITH_LIGHTEN toward light tan: butterscotch, like the Mastcam-Z station photos.
+ */
+export const REGOLITH_LIGHTEN = 0.3
+export const PHOTO_STRETCH_LO = 0.02
+export const PHOTO_STRETCH_HI = 0.98
+export const COLOUR_BASE = 0.7
+export const COLOUR_GAIN = 0.6
 /**
  * ILLUSTRATIVE. Normal map from the photo's high-pass brightness (lighting only, never heights or slopes):
  * blur radius of the high-pass (pixels of the 5 m photo) and how strongly brightness reads as slope.
@@ -72,8 +81,11 @@ export const DETAIL_FADE_END_M = 140
 
 // ---------- Rocks ----------
 
-/** ILLUSTRATIVE. Scales the number of rocks drawn from the curve below (0.6: 40 % fewer). */
-export const ROCK_COUNT_SCALE = 0.6
+/** ILLUSTRATIVE. Scales the number of rocks drawn from the curve below (0.5: about half). */
+export const ROCK_COUNT_SCALE = 0.5
+/** ILLUSTRATIVE. Rock density follows the photo's local contrast, between these multiples of the curve. */
+export const ROCK_DENSITY_FLOOR = 0.3
+export const ROCK_DENSITY_CAP = 2
 
 /**
  * TEAM ASSUMPTION. Rock abundance: fraction of the ground covered by rocks, k. The size curve is the
@@ -112,11 +124,11 @@ export const LOCAL_HOUR_MAX = 18
  * moves as at an equinox. With the latitude (DATA) this gives an approximate sun direction.
  */
 export const SUN_DECLINATION_DEG = 0
-/** ILLUSTRATIVE. Light strengths: a strong sun and low sky light, for contrast. */
-export const SUN_INTENSITY = 3.2
-export const SKY_LIGHT_INTENSITY = 0.35
+/** ILLUSTRATIVE. Light strengths: the sun, and a sky light strong enough that shadows read brown. */
+export const SUN_INTENSITY = 2.1
+export const SKY_LIGHT_INTENSITY = 0.85
 /** ILLUSTRATIVE. Exposure for the filmic tone mapping (brightness of the lit scene). */
-export const EXPOSURE = 1.25
+export const EXPOSURE = 1.1
 /** ILLUSTRATIVE. The sun casts shadows over a square this far each way around you, metres (~500 m across). */
 export const SHADOW_RADIUS_M = 250
 

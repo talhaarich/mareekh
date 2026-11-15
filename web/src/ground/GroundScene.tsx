@@ -92,6 +92,7 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
           skyZenith: readToken('--color-relief-4'),
           sunGlow: readToken('--color-fg'),
           regolith: readToken('--color-relief-4'),
+          regolithLight: readToken('--color-shade-light'),
           rockBrown: readToken('--color-relief-3'),
           rockGrey: readToken('--color-fg-muted'),
           route: readToken('--color-route'),
@@ -101,6 +102,14 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
           labelBack: readToken('--color-bg'),
         },
         onHud: setHud,
+        // Overlay panels (marked data-ground-panel), in the container's pixels.
+        panelRects: () => {
+          const o = container.getBoundingClientRect()
+          return [...(rootRef.current?.querySelectorAll('[data-ground-panel]') ?? [])].map((el) => {
+            const r = el.getBoundingClientRect()
+            return { left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }
+          })
+        },
       })
       // Face the next station on the planned route, or north with no plan.
       const nextId = nextStationId(legs, at, stationId, distanceM)
@@ -166,10 +175,12 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
 
       <div
         role="note"
+        data-ground-panel
         className="pointer-events-none absolute left-1/2 top-3 z-10 w-[min(44rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-md border border-caution bg-panel/95 px-3 py-1.5 text-center text-xs font-semibold shadow"
       >
         Simulated view. Heights from orbital data every {grid?.meta.resM ?? 20} m; small bumps and rocks are illustrative, real
-        rocks are too small to see from orbit. Surface texture from the 5 m orbital photo.
+        rocks are too small to see from orbit. Surface texture from the 5 m orbital photo. Colour approximated; the orbital
+        photo is greyscale.
       </div>
 
       {(failed || !grid) && (
@@ -187,7 +198,7 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-sm text-fg-muted">Building the ground…</div>
       )}
 
-      <div className="absolute left-3 top-14 z-10 w-72 space-y-1.5 rounded-md border border-line bg-panel/95 p-3 text-xs shadow-lg">
+      <div data-ground-panel className="absolute left-3 top-14 z-10 w-72 space-y-1.5 rounded-md border border-line bg-panel/95 p-3 text-xs shadow-lg">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">{atStation ? `At ${atStation.id} · ${atStation.name}` : 'Simulated ground view'}</h2>
           <button type="button" onClick={onClose} className="rounded-[3px] border border-brand bg-brand px-2 py-1 font-medium text-bg">
@@ -230,7 +241,7 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
         {base && <Readout label="To base" value={toText(base)} source="Straight line on the Mars sphere" />}
       </div>
 
-      <div className="absolute bottom-3 left-3 z-10 w-72 space-y-2 rounded-md border border-line bg-panel/95 p-3 text-xs shadow-lg">
+      <div data-ground-panel className="absolute bottom-3 left-3 z-10 w-72 space-y-2 rounded-md border border-line bg-panel/95 p-3 text-xs shadow-lg">
         <label className="block text-fg-muted">
           Local time {fmtHour(hour)} <span className="text-[10px]">(sun direction approximate: no season, equinox sun)</span>
           <input
@@ -256,7 +267,7 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
       </div>
 
       {atStation && photo && (
-        <figure className="absolute bottom-3 right-3 z-10 w-64 space-y-1 rounded-md border border-line bg-panel/95 p-2 text-xs shadow-lg">
+        <figure data-ground-panel className="absolute bottom-3 right-3 z-10 w-64 space-y-1 rounded-md border border-line bg-panel/95 p-2 text-xs shadow-lg">
           <figcaption className="text-sm font-semibold">What Perseverance saw here</figcaption>
           <button type="button" onClick={() => setBigPhoto(photo)} className="block w-full cursor-zoom-in" aria-label="Open the photo full size">
             <img src={photo.url} alt={`Rover photo at ${atStation.name}`} className="h-32 w-full rounded border border-line object-cover" />

@@ -8,12 +8,14 @@ import * as THREE from 'three'
 import type { Grid } from '../lib/grid'
 import type { LatLon } from '../lib/mars'
 import * as C from './constants'
-import { normalMapRGBA, photoFields, rockDensityFactor, sampleField, type PhotoFields } from './photo'
+import { colourMapRGBA, normalMapRGBA, photoFields, rockDensityFactor, sampleField, stretch, type PhotoFields } from './photo'
 import { mulberry32, rocksForCell, rockSizes, type Rock } from './rocks'
 import { sunDirection } from './sun'
 import { buildChunk, gridMap, makeFrame, slopeAt, terrainHeight, toLatLon, toLocal, type Frame, type GridMap, type NoiseOptions } from './terrain'
 
 export interface SceneColors {
+  /** Light tan mixed into the regolith colour (REGOLITH_LIGHTEN) for the butterscotch ground. */
+  regolithLight: string
   skyHorizon: string
   skyZenith: string
   sunGlow: string
@@ -46,6 +48,8 @@ export interface SceneInputs {
   hardSlopeDeg: number
   colors: SceneColors
   onHud: (hud: HudState) => void
+  /** Screen boxes of the overlay panels (container pixels): beacon labels under them are hidden. */
+  panelRects?: () => { left: number; top: number; right: number; bottom: number }[]
 }
 
 export interface HudState {
@@ -100,12 +104,6 @@ function groundShader(material: THREE.MeshStandardMaterial, uniforms: Record<str
   }
 }
 
-/** White tinted `k` of the way toward `c` scaled to unit brightness, so the tint colours but does not darken. */
-function tintTowards(c: THREE.Color, k: number): THREE.Color {
-  const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
-  const unit = lum > 0 ? c.clone().multiplyScalar(1 / lum) : new THREE.Color(1, 1, 1)
-  return new THREE.Color(1, 1, 1).lerp(unit, k)
-}
 
 const SKY_VERTEX = /* glsl */ `
 varying vec3 vDir;
@@ -187,6 +185,9 @@ export class GroundSceneController {
   private readonly sunDir = new THREE.Vector3(0, 1, 0)
   /** Roughness and brightness from the photo (null until it has loaded): set rock density. */
   private photo: PhotoFields | null = null
+  private readonly regolith: THREE.Color
+  /** Beacon labels and their size in label heights (for hiding those under a panel). */
+  private readonly labels: { sprite: THREE.Sprite; aspect: number; row: number }[] = []
 
   constructor(inputs: SceneInputs) {
     this.i = inputs
@@ -259,13 +260,17 @@ export class GroundSceneController {
     this.sun.shadow.mapSize.set(C.QUALITY_LEVELS[0].shadowMapPx, C.QUALITY_LEVELS[0].shadowMapPx)
     this.sun.shadow.bias = -0.001
     this.sun.shadow.normalBias = 1.2
-    this.hemi = new THREE.HemisphereLight(col(inputs.colors.skyZenith), col(inputs.colors.regolith), C.SKY_LIGHT_INTENSITY)
+    // Sky light: butterscotch from above, warm brown bounced from the ground below. Strong enough that
+    // ground in shadow reads as brown, not black.
+    this.hemi = new THREE.HemisphereLight(col(inputs.colors.skyHorizon), col(inputs.colors.rockBrown), C.SKY_LIGHT_INTENSITY)
     this.scene.add(this.sun, this.sun.target, this.hemi)
 
-    // The ground: the 5 m orbital photo as its colour (tinted at most PHOTO_TINT toward regolith), its
-    // high-pass as a normal map, three's lighting and shadows, the regolith grain underneath.
+    // The ground: a regolith colour varied by the photo's blurred, stretched brightness (the photo is
+    // greyscale and already shaded, so it is not used as the colour itself), the photo's fine detail as a
+    // normal map, three's lighting and shadows, the regolith grain underneath. Plain regolith until loaded.
+    this.regolith = col(inputs.colors.regolith).lerp(col(inputs.colors.regolithLight), C.REGOLITH_LIGHTEN)
     this.terrainMaterial = new THREE.MeshStandardMaterial({
-      color: tintTowards(col(inputs.colors.regolith), C.PHOTO_TINT),
+      color: this.regolith,
       roughness: 1,
       metalness: 0,
       side: THREE.DoubleSide,
@@ -395,20 +400,12 @@ export class GroundSceneController {
   private loadSatellite(): void {
     const s = this.i.satellite
     if (!s) return
-    new THREE.TextureLoader().load(
+    // Only the photo's pixels are needed: the colour and normal maps are made from them.
+    new THREE.ImageLoader().load(
       s.url,
-      (tex) => {
-        if (this.disposed) {
-          tex.dispose()
-          return
-        }
-        // Full resolution, sharp at a glancing angle.
-        tex.colorSpace = THREE.SRGBColorSpace
-        tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy()
-        this.textures.push(tex)
-        this.terrainMaterial.map = tex
-        this.usePhoto(tex.image as HTMLImageElement | ImageBitmap)
-        this.terrainMaterial.needsUpdate = true
+      (image) => {
+        if (this.disposed) return
+        this.usePhoto(image)
       },
       undefined,
       () => {
@@ -433,7 +430,25 @@ export class GroundSceneController {
     const px = ctx.getImageData(0, 0, w, h).data
     const lum = new Float32Array(w * h)
     for (let i = 0; i < w * h; i++) lum[i] = (0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]) / 255
-    const fields = photoFields(lum, w, h, C.PHOTO_HIGHPASS_PX, C.PHOTO_AREA_PX)
+    // Stretch the brightness (2nd to 98th percentile), then split: low-pass for colour, high-pass for shading.
+    const fields = photoFields(stretch(lum, C.PHOTO_STRETCH_LO, C.PHOTO_STRETCH_HI), w, h, C.PHOTO_HIGHPASS_PX, C.PHOTO_AREA_PX)
+    const reg = this.regolith.clone().convertLinearToSRGB()
+    const colour = new THREE.DataTexture(
+      colourMapRGBA(fields.low, w, h, [reg.r * 255, reg.g * 255, reg.b * 255], C.COLOUR_BASE, C.COLOUR_GAIN),
+      w,
+      h,
+    )
+    colour.colorSpace = THREE.SRGBColorSpace
+    colour.wrapS = THREE.ClampToEdgeWrapping
+    colour.wrapT = THREE.ClampToEdgeWrapping
+    colour.minFilter = THREE.LinearMipmapLinearFilter
+    colour.magFilter = THREE.LinearFilter
+    colour.generateMipmaps = true
+    colour.anisotropy = this.renderer.capabilities.getMaxAnisotropy()
+    colour.needsUpdate = true
+    this.textures.push(colour)
+    this.terrainMaterial.map = colour
+    this.terrainMaterial.color.set(0xffffff)
     const normal = new THREE.DataTexture(normalMapRGBA(fields.highPass, w, h, C.PHOTO_NORMAL_STRENGTH), w, h)
     normal.wrapS = THREE.ClampToEdgeWrapping
     normal.wrapT = THREE.ClampToEdgeWrapping
@@ -444,6 +459,7 @@ export class GroundSceneController {
     normal.needsUpdate = true
     this.textures.push(normal)
     this.terrainMaterial.normalMap = normal
+    this.terrainMaterial.needsUpdate = true
     this.photo = fields
     this.rockCache.clear()
     this.updateRocks(true)
@@ -607,11 +623,11 @@ export class GroundSceneController {
         const key = r * width + c
         let rocks = this.rockCache.get(key)
         if (!rocks) {
-          // Fewer rocks overall, and more where the photo looks rough or bright (illustrative).
+          // Fewer rocks overall; more where the stretched photo has local contrast (illustrative).
           const [u, v] = this.uvAt((c - g.fx0) / g.fxPerE, (r - g.fy0) / g.fyPerN)
           const ph = this.photo
           const density = ph
-            ? rockDensityFactor(sampleField(ph.rough, ph.width, ph.height, u, v), sampleField(ph.bright, ph.width, ph.height, u, v), ph.meanRough, ph.meanBright)
+            ? rockDensityFactor(sampleField(ph.rough, ph.width, ph.height, u, v), ph.meanRough, C.ROCK_DENSITY_FLOOR, C.ROCK_DENSITY_CAP)
             : 1
           rocks = rocksForCell(r, c, area * density * C.ROCK_COUNT_SCALE, this.rockSizes, {
             worldSeed: C.WORLD_SEED,
@@ -745,8 +761,10 @@ export class GroundSceneController {
       const label = this.labelSprite(`${s.id} · ${s.name}`, color)
       label.position.set(p.e, ground + C.BEACON_HEIGHT_M, -p.n)
       // Three rows of labels (in label heights above the pole), so stations in the same direction do not overlap.
-      label.center.set(0.5, -(index % C.BEACON_LABEL_ROWS) * 1.2)
+      const row = (index % C.BEACON_LABEL_ROWS) * 1.2
+      label.center.set(0.5, -row)
       this.scene.add(label)
+      this.labels.push({ sprite: label, aspect: label.scale.x / label.scale.y, row })
     })
     poleGeom.dispose()
   }
@@ -886,7 +904,26 @@ export class GroundSceneController {
     if (dt > 0) this.watchFrames(now, dt)
     if (now - this.hudAt > 100) {
       this.hudAt = now
+      this.hideLabelsUnderPanels()
       this.sendHud()
+    }
+  }
+
+  /** Labels are drawn on the canvas, under the overlay panels: hide any that a panel would cover. */
+  private readonly projected = new THREE.Vector3()
+  private hideLabelsUnderPanels(): void {
+    const rects = this.i.panelRects?.() ?? []
+    const W = this.renderer.domElement.clientWidth
+    const H = this.renderer.domElement.clientHeight
+    // A size-fixed sprite of scale s is s x projection[5] / 2 of the screen height tall.
+    const hPx = (C.BEACON_LABEL_SCREEN * this.camera.projectionMatrix.elements[5] * H) / 2
+    for (const l of this.labels) {
+      const p = this.projected.copy(l.sprite.position).project(this.camera)
+      if (p.z > 1) continue // behind the camera: three does not draw it
+      const x = ((p.x + 1) / 2) * W
+      const bottom = ((1 - p.y) / 2) * H - l.row * hPx
+      const box = { left: x - (l.aspect * hPx) / 2, right: x + (l.aspect * hPx) / 2, top: bottom - hPx, bottom }
+      l.sprite.visible = !rects.some((r) => box.left < r.right && box.right > r.left && box.top < r.bottom && box.bottom > r.top)
     }
   }
 

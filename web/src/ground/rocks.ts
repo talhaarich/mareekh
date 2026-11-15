@@ -97,6 +97,8 @@ export interface Rock {
   /** Turn about the vertical, radians, and which shape. */
   yaw: number
   variant: number
+  /** 0 to 1: where the rock's colour sits between the basalt shades. */
+  tone: number
 }
 
 /** The rocks in one cell of `areaM2` square metres. Same row, col and seed: same rocks. */
@@ -118,6 +120,7 @@ export function rocksForCell(
       squash: o.squashMin + rand() * (o.squashMax - o.squashMin),
       yaw: rand() * Math.PI * 2,
       variant: Math.floor(rand() * o.variants),
+      tone: rand(),
     })
   }
   return rocks

@@ -31,6 +31,27 @@ describe('ground heights', () => {
     }
   })
 
+  it('stay exact at grid points with a sharper tension too', () => {
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) expect(terrainHeight(grid, c, r, noise, 0.5)).toBe(dem[r * W + c])
+  })
+
+  it('round a cliff off less, and overshoot less, with tension', () => {
+    // A 10 m cliff between columns 5 and 6.
+    const cliff: Grid = { meta, slope, dem: dem.map((_, i) => (i % W >= 6 ? 10 : 0)) }
+    const overshoot = (tension: number) => {
+      let worst = 0
+      for (let k = 1; k < 40; k++) {
+        const h = bicubicHeight(cliff, 3 + k * 0.1, 4, tension)!
+        worst = Math.max(worst, -h, h - 10)
+      }
+      return worst
+    }
+    expect(overshoot(0)).toBeGreaterThan(0.2)
+    expect(overshoot(0.5)).toBeLessThan(overshoot(0) / 2 + 1e-9)
+    // Closer to the cliff top just past the edge (less rounded): at 5.75 the sharper curve is higher.
+    expect(bicubicHeight(cliff, 5.75, 4, 0.5)!).toBeGreaterThan(bicubicHeight(cliff, 5.75, 4, 0)!)
+  })
+
   it('pass smoothly between grid points (a linear slope stays linear)', () => {
     const plane: Grid = { meta, slope, dem: dem.map((_, i) => 10 * (i % W) + 5 * Math.floor(i / W)) }
     expect(bicubicHeight(plane, 3.25, 4.5)).toBeCloseTo(10 * 3.25 + 5 * 4.5, 9)

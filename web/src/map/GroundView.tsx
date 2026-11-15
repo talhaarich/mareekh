@@ -406,14 +406,14 @@ export function GroundOverlay() {
     <>
       <div
         role="note"
-        className="pointer-events-none absolute left-1/2 top-3 z-30 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-md border border-caution bg-panel/95 px-3 py-1.5 text-center text-xs font-semibold text-fg shadow"
+        className="pointer-events-none absolute left-1/2 top-[calc(var(--mm-inset-top,0px)+0.75rem)] z-30 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-md border border-caution bg-panel/95 px-3 py-1.5 text-center text-xs font-semibold text-fg shadow"
       >
         Simulated view from orbital data: 20 m heights, 5 m photo. Rocks are not visible.
       </div>
 
       <div
         data-map-obstacle
-        className="absolute right-3 top-12 z-30 w-64 space-y-1.5 rounded-md border border-line bg-panel/95 p-3 text-xs text-fg shadow-lg"
+        className="absolute right-[calc(var(--mm-inset-right,0px)+0.75rem)] top-[calc(var(--mm-inset-top,0px)+3rem)] z-30 w-64 space-y-1.5 rounded-md border border-line bg-panel/95 p-3 text-xs text-fg shadow-lg"
       >
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">{station ? `Standing at ${station.id}` : 'Standing on the map'}</h2>
@@ -459,7 +459,7 @@ export function GroundOverlay() {
       {station && photo && (
         <figure
           data-map-obstacle
-          className="absolute bottom-3 right-3 z-30 w-64 space-y-1 rounded-md border border-line bg-panel/95 p-2 text-xs text-fg shadow-lg"
+          className="absolute bottom-[calc(var(--mm-inset-bottom,0px)+0.75rem)] right-[calc(var(--mm-inset-right,0px)+0.75rem)] z-30 w-64 space-y-1 rounded-md border border-line bg-panel/95 p-2 text-xs text-fg shadow-lg"
         >
           <figcaption className="text-sm font-semibold">What Perseverance saw here</figcaption>
           <button type="button" onClick={() => setBigPhoto(photo)} className="block w-full cursor-zoom-in" aria-label="Open the photo full size">

@@ -57,7 +57,7 @@ function Card({ id }: { id: string }) {
   return (
     <div
       data-map-obstacle
-      className="absolute left-3 top-3 z-10 max-h-[calc(100%-1.5rem)] w-72 space-y-3 overflow-y-auto rounded-md border border-line bg-panel/95 p-3 text-sm text-fg shadow-lg"
+      className="absolute left-[calc(var(--mm-inset-left,0px)+0.75rem)] top-[calc(var(--mm-inset-top,0px)+0.75rem)] z-10 max-h-[calc(100%-var(--mm-inset-top,0px)-var(--mm-inset-bottom,0px)-1.5rem)] w-72 space-y-3 overflow-y-auto rounded-md border border-line bg-panel/95 p-3 text-sm text-fg shadow-lg"
     >
       <div className="flex items-start justify-between gap-2">
         <h2 className="text-base font-semibold">

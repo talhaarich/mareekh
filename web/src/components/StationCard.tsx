@@ -3,6 +3,7 @@ import { bearingDeg, distanceM, walkHomeS } from '../lib/helpers'
 import { useInteraction } from '../map/interaction'
 import { useData, type Photo } from '../state/data'
 import { usePlan } from '../state/plan'
+import { defaultStops, useWalkStops } from './walkStops'
 import { DASH, fmtBearing, fmtDistance, fmtDuration } from './format'
 
 function StationPhoto({ photo, stationName }: { photo: Photo; stationName: string }) {
@@ -38,8 +39,11 @@ function useWalkHome(lat: number, lon: number): number {
 function Card({ id }: { id: string }) {
   const stations = useData((s) => s.stations)
   const select = useInteraction((s) => s.selectStation)
+  const included = useWalkStops((s) => s.included)
+  const toggle = useWalkStops((s) => s.toggle)
   const station = stations.find((s) => s.id === id)
   const base = stations[0]
+  const inWalk = new Set(included ?? defaultStops(stations)).has(id)
   const walkHome = useWalkHome(station?.lat ?? NaN, station?.lon ?? NaN)
   if (!station || !base) return null
 
@@ -66,6 +70,15 @@ function Card({ id }: { id: string }) {
         </button>
       </div>
       <p>{station.task}</p>
+      <button
+        type="button"
+        onClick={() => toggle(stations, station.id)}
+        className={`w-full rounded-[3px] border px-3 py-1.5 text-sm font-medium ${
+          inWalk ? 'border-line bg-panel-2 text-fg hover:border-fg-muted' : 'border-brand bg-brand text-bg'
+        }`}
+      >
+        {inWalk ? 'Remove from the walk' : 'Add to the walk'}
+      </button>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
         <dt className="text-fg-muted">Range from base</dt>
         <dd className="font-mono">{fmtDistance(distanceM(from, here))}</dd>
@@ -79,7 +92,7 @@ function Card({ id }: { id: string }) {
       <p className="text-[10px] leading-tight text-fg-muted">
         Range and bearing: straight line on the Mars sphere from the station list. Walk home: route model.
         Time at station: station list.
-        {station.sol !== null ? ` Position taken from rover sol ${station.sol}.` : ' Position has no rover source.'}
+        {station.sol !== null ? ` Position taken from rover sol ${station.sol}.` : ' Position from the USGS geologic map (SIM 3464): a mapped feature, not a rover stop.'}
       </p>
       {station.photos.length > 0 ? (
         <div className="grid grid-cols-1 gap-2">

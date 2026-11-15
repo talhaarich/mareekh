@@ -154,7 +154,10 @@ def build_stations(
     ``bounds``. Every station position comes from ``station_from_sol``. Base and
     every station must sit at least ``margin_m`` metres inside the box.
     ``photos_fn(sol)`` fills ``photos`` (use ``photos.photos_for_sol``); without it
-    ``photos`` is an empty list. Output keys follow CONTRACTS.md (``dwell_s``, not camelCase).
+    ``photos`` is an empty list.
+
+    A station that is not a rover stop (a feature from the geologic map, say) gives ``lat`` and
+    ``lon`` and a ``source`` instead of ``sol``: its ``sol`` is null and it has no rover photos. Output keys follow CONTRACTS.md (``dwell_s``, not camelCase).
     """
     jezero = yaml.safe_load(Path(jezero_yaml).read_text(encoding="utf-8")) or {}
     bounds = jezero.get("bounds")
@@ -185,12 +188,19 @@ def build_stations(
         expected_id = f"S{number}"
         if entry.get("id") != expected_id:
             raise StationError(f"stations.yaml entry {number} has id {entry.get('id')!r}, expected {expected_id!r} (walking order)")
-        sol = _require_int(entry.get("sol"), "sol", expected_id)
         dwell_s = _require_int(entry.get("dwell_s"), "dwell_s", expected_id)
         for key in ("name", "task"):
             if not isinstance(entry.get(key), str) or not entry[key].strip():
                 raise StationError(f"{expected_id}: '{key}' is missing")
-        lat, lon = station_from_sol(waypoints, sol)
+        if "sol" in entry:
+            sol: int | None = _require_int(entry.get("sol"), "sol", expected_id)
+            lat, lon = station_from_sol(waypoints, sol)
+        else:
+            if not all(isinstance(entry.get(k), (int, float)) for k in ("lat", "lon")):
+                raise StationError(f"{expected_id}: give a 'sol', or 'lat' and 'lon' with a 'source'")
+            if not isinstance(entry.get("source"), str) or not entry["source"].strip():
+                raise StationError(f"{expected_id}: a position without a sol needs a 'source'")
+            sol, lat, lon = None, float(entry["lat"]), float(entry["lon"])
         stations.append(
             {
                 "id": expected_id,
@@ -200,7 +210,7 @@ def build_stations(
                 "task": entry["task"],
                 "dwell_s": dwell_s,
                 "sol": sol,
-                "photos": photos_fn(sol) if photos_fn else [],
+                "photos": photos_fn(sol) if photos_fn and sol is not None else [],
             }
         )
 

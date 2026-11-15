@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { create } from 'zustand'
 import type { PlanParams } from '../lib/plan'
 import { assumptionValue, useData, type Assumption } from '../state/data'
+import { distanceM } from '../lib/helpers'
 import { usePlan } from '../state/plan'
+import { useWalkStops, walkStations } from './walkStops'
 
 /**
  * The `params` slice (PLANNER_API.md): written only by the sliders, read by the planner.
@@ -52,7 +54,12 @@ export function usePlanner(): void {
   // The grid loads separately from the JSON files; without it the planner has no terrain to route on.
   const hasGrid = useData((s) => s.grid !== null)
   const assumptions = useData((s) => s.assumptions)
-  const stations = useData((s) => s.stations)
+  const allStations = useData((s) => s.stations)
+  const included = useWalkStops((s) => s.included)
+  const stations = useMemo(
+    () => (loaded ? walkStations(allStations, included, (a, b) => distanceM(a, b)) : []),
+    [loaded, allStations, included],
+  )
   const params = usePlanParams((s) => s.params)
   const init = usePlanParams((s) => s.init)
 

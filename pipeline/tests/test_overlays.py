@@ -177,3 +177,22 @@ def test_unknown_render_raises(tmp_path: Path) -> None:
     _write_tiny_geotiff(src)
     with pytest.raises(ValueError, match="unknown render"):
         export_png(str(src), BOX, str(tmp_path / "x.png"), render="sparkles")
+
+
+def test_class_map_snaps_near_miss_colours_and_drops_unknown_ones(tmp_path: Path) -> None:
+    rgb = np.zeros((3, 2, 3), dtype=np.uint8)
+    rgb[:, 0, 0] = [152, 76, 0]     # lossy near-miss of medium high-Ca pyroxene (153, 77, 0)
+    rgb[:, 0, 1] = [255, 255, 255]  # outside the scene
+    rgb[:, 0, 2] = [255, 0, 0]      # olivine, exact
+    src = tmp_path / "classes.tif"
+    _write_bands(src, rgb)
+    classes = [{"label": "Olivine", "colors": ["#ff0000"]}, {"label": "High-Ca pyroxene", "colors": ["#ff8000", "#994d00"]}]
+    export_png(str(src), BOX, str(tmp_path / "c.png"), nearest=True, render="rgb", options={"classes": classes})
+    img = _rgba(tmp_path / "c.png")
+    assert tuple(img[0, 0]) == (153, 77, 0, 255)  # snapped to the key colour
+    assert img[0, 1, 3] == 0                      # white: not a class, transparent
+    assert tuple(img[0, 2]) == (255, 0, 0, 255)
+    assert classes_present(str(src), BOX, classes) == [
+        {"color": "#ff0000", "label": "Olivine"},
+        {"color": "#ff8000", "label": "High-Ca pyroxene"},
+    ]

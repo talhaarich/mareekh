@@ -25,6 +25,13 @@ RENDERS = ("grey", "rgb", "hillshade", "elevation", "topo")
 SUN_AZIMUTH_DEG = 315.0
 SUN_ALTITUDE_DEG = 45.0
 PHOTO_STRETCH_PCT = (0.5, 99.5)
+# A class-map pixel within this RGB distance of a key colour is that class. Class maps saved with
+# lossy compression carry near-miss colours (152,76,0 for 153,77,0); anything further is not a class.
+# Kept well under half the closest gap between two classes' colours (about 25), so classes never swap.
+# A class is listed in the legend only above this share of the identified pixels in the box, so a
+# few stray pixels do not add a legend line (a display choice).
+LEGEND_MIN_SHARE = 0.005
+CLASS_COLOUR_TOLERANCE = 12.0
 
 
 def _hex_rgb(colour: str) -> tuple[int, int, int]:
@@ -54,6 +61,32 @@ def hillshade(dem: np.ndarray, cell_m: tuple[float, float]) -> np.ndarray:
     return np.where(np.isnan(dem), np.nan, shade)
 
 
+def snap_classes(rgb: np.ndarray, classes: list[dict[str, Any]]) -> tuple[np.ndarray, np.ndarray]:
+    """Snap each pixel of an (H, W, 3) class map to the nearest key colour.
+
+    Args:
+        rgb: Colours, 0..255.
+        classes: ``{"label", "colors": ["#rrggbb", ...]}``; each colour is a valid shade of that class.
+
+    Returns:
+        (snapped colours (H, W, 3) uint8, class index (H, W) int, -1 where no class is within
+        ``CLASS_COLOUR_TOLERANCE``: not identified, outside the scene, or noise).
+    """
+    keys, owner = [], []
+    for i, c in enumerate(classes):
+        for col in c["colors"]:
+            keys.append(_hex_rgb(col))
+            owner.append(i)
+    key = np.array(keys, dtype=np.float64)
+    flat = rgb.reshape(-1, 3).astype(np.float64)
+    dist = np.linalg.norm(flat[:, None, :] - key[None, :, :], axis=-1)
+    nearest = dist.argmin(axis=1)
+    ok = dist[np.arange(len(flat)), nearest] <= CLASS_COLOUR_TOLERANCE
+    snapped = np.where(ok[:, None], key[nearest], 0).astype(np.uint8).reshape(rgb.shape)
+    cls = np.where(ok, np.array(owner)[nearest], -1).reshape(rgb.shape[:2])
+    return snapped, cls
+
+
 def _ramp(t: np.ndarray, stops: list[str]) -> np.ndarray:
     """Colour 0..255 (H, W, 3) for t in 0..1 along evenly spaced hex colour stops."""
     cols = np.array([_hex_rgb(s) for s in stops], dtype=np.float64)
@@ -70,7 +103,11 @@ def _render(
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     if render == "rgb":
-        rgba[..., :3] = np.clip(arr[:3].transpose(1, 2, 0), 0, 255).astype(np.uint8)
+        colours = np.clip(arr[:3].transpose(1, 2, 0), 0, 255).astype(np.uint8)
+        if options.get("classes"):
+            colours, cls = snap_classes(colours, options["classes"])
+            valid = valid & (cls >= 0)
+        rgba[..., :3] = colours
     elif render == "grey":
         values = arr[0][valid]
         lo, hi = (np.percentile(values, PHOTO_STRETCH_PCT) if values.size else (0.0, 1.0))
@@ -124,7 +161,8 @@ def export_png(
 
     Render modes:
         grey: band 1, stretched between the 0.5th and 99.5th percentile (photos).
-        rgb: bands 1-3 as colours (class maps); a pixel that is 0 in all three is no data.
+        rgb: bands 1-3 as colours (class maps); a pixel that is 0 in all three is no data. With
+            ``options["classes"]``, pixels snap to the nearest key colour and the rest are transparent.
         hillshade: shading of a height file, light from the north-west.
         elevation: height on ``options["ramp"]`` (hex colours, low to high), lit by the hillshade.
         topo: contours every ``options["interval_m"]`` metres over light shading; every
@@ -222,14 +260,13 @@ def classes_present(
             (e.g. high and medium confidence). The first colour is used in the legend.
 
     Returns:
-        ``[{"color", "label"}]`` in the order given, only for classes present.
+        ``[{"color", "label"}]`` in the order given, only for classes covering at least
+        ``LEGEND_MIN_SHARE`` of the identified pixels.
     """
     with rasterio.open(src_path) as src:
         window, _ = box_window(src, bounds)
-        rgb = src.read([1, 2, 3], window=window).transpose(1, 2, 0).reshape(-1, 3)
-    found = {tuple(int(v) for v in px) for px in np.unique(rgb, axis=0)}
-    legend = []
-    for c in classes:
-        if any(_hex_rgb(col) in found for col in c["colors"]):
-            legend.append({"color": c["colors"][0], "label": c["label"]})
-    return legend
+        rgb = src.read([1, 2, 3], window=window).transpose(1, 2, 0)
+    _, cls = snap_classes(rgb, classes)
+    identified = int((cls >= 0).sum())
+    present = {i for i in range(len(classes)) if identified and (cls == i).sum() / identified >= LEGEND_MIN_SHARE}
+    return [{"color": c["colors"][0], "label": c["label"]} for i, c in enumerate(classes) if i in present]

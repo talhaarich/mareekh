@@ -193,6 +193,60 @@
       "caveat": "Partial coverage. A class map of the closest spectral match, not a measurement at each point. Bold colours: very high confidence; dark colours: high or medium."
     },
     {
+      "id": "geology",
+      "name": "Rock units",
+      "group": "overlay",
+      "type": "image",
+      "url": "overlays/geology.png",
+      "coordinates": [
+        [
+          77.37984521503391,
+          18.512114710809875
+        ],
+        [
+          77.52213662101491,
+          18.512114710809875
+        ],
+        [
+          77.52213662101491,
+          18.409878845369697
+        ],
+        [
+          77.37984521503391,
+          18.409878845369697
+        ]
+      ],
+      "default": false,
+      "legend": [
+        {
+          "color": "#c9a26b",
+          "label": "NHjf2 \u00b7 Jezero fan 2"
+        },
+        {
+          "color": "#8fa6b8",
+          "label": "Njf \u00b7 Jezero floor"
+        },
+        {
+          "color": "#c98b9a",
+          "label": "Nle \u00b7 Lower etched"
+        },
+        {
+          "color": "#ead9a2",
+          "label": "Aeb \u00b7 Eolian bedform"
+        },
+        {
+          "color": "#9b6f9e",
+          "label": "Nue \u00b7 Upper etched"
+        },
+        {
+          "color": "#8a5a44",
+          "label": "cr \u00b7 Crater rim"
+        }
+      ],
+      "credit": "Sun, V. Z., and Stack, K. M. (2020), Geologic map of Jezero crater and the Nili Planum region, Mars, USGS SIM 3464",
+      "caveat": "Mapped at 1:75,000 from orbit. Colours are ours, not the printed map's."
+    },
+    {
       "id": "terrain",
       "name": "3D terrain",
       "group": "view",
@@ -201,7 +255,7 @@
       "default": false,
       "legend": [],
       "credit": "Derived from the CTX height map (NASA/JPL/MSSS; mosaic by USGS Astrogeology)",
-      "caveat": "Visual only: heights are exaggerated. Slope and routes come from the height grid, not the 3D view."
+      "caveat": "Visual only, and the map draws Mars on Earth-sized tiles, so 1x looks about half as steep as it is. Slope and routes come from the height grid, not the 3D view."
     }
   ]
 }

@@ -107,18 +107,39 @@ layers:
     name: Rock units
     group: overlay
     type: image
-    src: data/raw/jezero_geology.tif   # USGS SIM 3464, not downloaded yet (data-log row 12): skipped until it exists
+    src: data/raw/sim3464_JezeroNili_FINAL/Geodatabase/Nili.gdb   # USGS SIM 3464 database (data-log row 12)
     url: overlays/geology.png
-    render: rgb
-    nearest: true
-    credit: "Sun and Stack (2020), USGS SIM 3464"
-    caveat: "Mapped at 1:75,000."
+    render: units            # vector polygons burned onto the height grid (pipeline/steps/units.py)
+    layer: GeoUnits_v1
+    field: unit
+    options: { scale: 4 }
+    # Unit codes and symbols are the map's own; the database stores only Esri colour IDs, so these
+    # colours are ours. The legend lists only units present in the box.
+    classes:
+      - { value: "0", label: "NHjf2 · Jezero fan 2", color: "#c9a26b" }
+      - { value: "1", label: "NHjf1 · Jezero fan 1", color: "#a8754a" }
+      - { value: "2", label: "Njf · Jezero floor", color: "#8fa6b8" }
+      - { value: "3", label: "Nle · Lower etched", color: "#c98b9a" }
+      - { value: "4", label: "Hnpf · Nili Planum fan", color: "#d8c27a" }
+      - { value: "5", label: "Nnp2 · Nili Planum 2", color: "#8ea677" }
+      - { value: "6", label: "Nnp1 · Nili Planum 1", color: "#6b7f5a" }
+      - { value: "7", label: "Aeb · Eolian bedform", color: "#ead9a2" }
+      - { value: "8", label: "su · Smooth, undivided", color: "#a9a9c9" }
+      - { value: "9", label: "Nrb · Rugged bright", color: "#e0b7d6" }
+      - { value: "10", label: "Nue · Upper etched", color: "#9b6f9e" }
+      - { value: "11", label: "cr · Crater rim", color: "#8a5a44" }
+      - { value: "12", label: "ce · Crater ejecta", color: "#d49a6a" }
+      - { value: "13", label: "ci · Crater interior", color: "#6f8496" }
+    credit: "Sun, V. Z., and Stack, K. M. (2020), Geologic map of Jezero crater and the Nili Planum region, Mars, USGS SIM 3464"
+    caveat: "Mapped at 1:75,000 from orbit. Colours are ours, not the printed map's."
 
   - id: terrain
     name: 3D terrain
     group: view
     type: terrain
     url: terrain/tiles.json   # TileJSON: zoom range and bounds; tiles at terrain/{z}/{x}/{y}.png (CONTRACTS)
-    options: { minzoom: 8, maxzoom: 13 }   # z12 is about the 20 m cell size; the app over-zooms past 13
+    # The whole crater, not just the walk box: the box has 240 m of relief, the crater about 1.5 km
+    # (rim included). Only the route grid stays at the walk box.
+    options: { minzoom: 8, maxzoom: 12, bounds: [18.0, 77.15, 18.8, 77.95] }   # z12 is about the 20 m cell size
     credit: "Derived from the CTX height map (NASA/JPL/MSSS; mosaic by USGS Astrogeology)"
-    caveat: "Visual only: heights are exaggerated. Slope and routes come from the height grid, not the 3D view."
+    caveat: "Visual only, and the map draws Mars on Earth-sized tiles, so 1x looks about half as steep as it is. Slope and routes come from the height grid, not the 3D view."

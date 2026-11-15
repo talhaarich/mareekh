@@ -549,7 +549,7 @@ export default function MissionMap() {
         />
       )}
 
-      {/* Under the zoom buttons; hidden in the ground view, which has its own drag-to-look. */}
+      {/* Above the zoom buttons; hidden in the MapLibre ground view, which has its own drag-to-look. */}
       {!groundOn && <TurnTiltControls mapRef={mapRef} />}
 
       <PositionEdgeArrow

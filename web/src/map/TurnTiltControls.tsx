@@ -16,7 +16,7 @@ const BUTTONS: { move: Move; label: string; glyph: string; title: string }[] = [
 ]
 
 /**
- * Turn and tilt buttons under MapLibre's zoom buttons, styled as a MapLibre control group, for anyone who
+ * Turn and tilt buttons just above MapLibre's zoom buttons (bottom right), styled as a MapLibre control group, for anyone who
  * cannot right-drag (trackpads, touch). Right-drag, Ctrl + drag and two fingers still work as before.
  */
 export default function TurnTiltControls({ mapRef }: { mapRef: RefObject<MapRef | null> }) {
@@ -35,7 +35,7 @@ export default function TurnTiltControls({ mapRef }: { mapRef: RefObject<MapRef 
       data-map-obstacle
       role="group"
       aria-label="Turn and tilt the map"
-      className="maplibregl-ctrl maplibregl-ctrl-group absolute right-0 top-[110px] z-10 mr-[10px]"
+      className="maplibregl-ctrl maplibregl-ctrl-group absolute bottom-[107px] right-0 z-10 mr-[10px]"
     >
       {BUTTONS.map((b) => (
         <button

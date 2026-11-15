@@ -27,6 +27,12 @@ interface InteractionState {
   cameraPreset: { name: CameraPreset; seq: number } | null
   /** "Fly the walk" tour running (`seq` changes on every start), or null. */
   tour: { seq: number } | null
+  /** A request to open a side panel (from the welcome card); `seq` changes on every request. */
+  panelRequest: { side: 'left' | 'right'; id: string; seq: number } | null
+  /** Things briefly pulsed to show where to look ('status', 'route', 'slope'); cleared after PULSE_MS. */
+  pulse: { targets: string[]; seq: number } | null
+  /** Welcome card shown. Starts open on a first visit (mm.welcome.v1 not set). */
+  welcomeOpen: boolean
   /**
    * Pixels along each edge of the map covered by the floating panels, rails and top bar (set by AppShell).
    * Labels and the position arrow keep out of these strips.
@@ -48,6 +54,10 @@ interface InteractionState {
   setCameraPreset: (name: CameraPreset) => void
   startTour: () => void
   stopTour: () => void
+  openPanel: (side: 'left' | 'right', id: string) => void
+  pulseTargets: (targets: string[]) => void
+  /** Open or close the welcome card; closing remembers it in this browser. */
+  setWelcomeOpen: (open: boolean) => void
   setMapInsets: (insets: MapInsets, areas: PanelArea[]) => void
 }
 
@@ -67,6 +77,28 @@ export interface MapInsets {
 
 export const NO_INSETS: MapInsets = { top: 0, right: 0, bottom: 0, left: 0 }
 
+/** How long a pulse lasts, milliseconds. */
+export const PULSE_MS = 4000
+
+/** Browser key that remembers the welcome card was closed (a per-viewer convenience; may be unavailable). */
+const WELCOME_KEY = 'mm.welcome.v1'
+
+function welcomeSeen(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(WELCOME_KEY) === 'closed'
+  } catch {
+    return false // storage blocked: show the card
+  }
+}
+
+function rememberWelcome(): void {
+  try {
+    localStorage.setItem(WELCOME_KEY, 'closed')
+  } catch {
+    // storage blocked: it just shows again next time
+  }
+}
+
 export const useInteraction = create<InteractionState>()((set, get) => ({
   hoverLeg: null,
   selectedStationId: null,
@@ -78,6 +110,9 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   inspectAt: null,
   cameraPreset: null,
   tour: null,
+  panelRequest: null,
+  pulse: null,
+  welcomeOpen: !welcomeSeen(),
   mapInsets: NO_INSETS,
   panelAreas: [],
 
@@ -92,6 +127,18 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   setCameraPreset: (name) => set({ cameraPreset: { name, seq: (get().cameraPreset?.seq ?? 0) + 1 } }),
   startTour: () => set({ tour: { seq: (get().tour?.seq ?? 0) + 1 } }),
   stopTour: () => set({ tour: null }),
+  openPanel: (side, id) => set({ panelRequest: { side, id, seq: (get().panelRequest?.seq ?? 0) + 1 } }),
+  pulseTargets: (targets) => {
+    const seq = (get().pulse?.seq ?? 0) + 1
+    set({ pulse: { targets, seq } })
+    setTimeout(() => {
+      if (get().pulse?.seq === seq) set({ pulse: null })
+    }, PULSE_MS)
+  },
+  setWelcomeOpen: (open) => {
+    if (!open) rememberWelcome()
+    set({ welcomeOpen: open })
+  },
   setMapInsets: (insets, areas) => {
     const cur = get().mapInsets
     if (cur.top !== insets.top || cur.right !== insets.right || cur.bottom !== insets.bottom || cur.left !== insets.left) {

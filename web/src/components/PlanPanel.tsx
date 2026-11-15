@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useInteraction } from '../map/interaction'
 import { assumptionValue, useData, type Assumption } from '../state/data'
@@ -27,11 +27,18 @@ interface ReleaseSliderProps {
   show: (v: number) => string
   note: ReactNode
   onCommit: (v: number) => void
+  /** Pulsed by the welcome card, with a hint, and scrolled into view. */
+  pulsing?: boolean
+  hint?: string
 }
 
 /** Moves freely while dragged, but only tells the planner when it is released. */
-function ReleaseSlider({ label, min, max, step, value, show, note, onCommit }: ReleaseSliderProps) {
+function ReleaseSlider({ label, min, max, step, value, show, note, onCommit, pulsing = false, hint }: ReleaseSliderProps) {
   const [draft, setDraft] = useState<number | null>(null)
+  const ref = useRef<HTMLLabelElement | null>(null)
+  useEffect(() => {
+    if (pulsing) ref.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [pulsing])
   const commit = () => {
     if (draft !== null) {
       onCommit(draft)
@@ -39,7 +46,11 @@ function ReleaseSlider({ label, min, max, step, value, show, note, onCommit }: R
     }
   }
   return (
-    <label className="block text-xs text-fg-muted">
+    <label
+      ref={ref}
+      className={`block rounded text-xs text-fg-muted ${pulsing ? 'animate-pulse p-1.5 ring-2 ring-route' : ''}`}
+    >
+      {pulsing && hint && <span className="mb-1 block text-xs font-semibold text-route">{hint}</span>}
       <span className="flex justify-between">
         <span>{label}</span>
         <span className="font-mono text-fg">{show(draft ?? value)}</span>
@@ -82,6 +93,7 @@ export default function PlanPanel({ part }: { part: PlanPart }) {
   const params = usePlanParams((s) => s.params)
   const commit = usePlanParams((s) => s.commit)
   const hoverLeg = useInteraction((s) => s.hoverLeg)
+  const slopePulsing = useInteraction((s) => s.pulse?.targets.includes('slope') ?? false)
   const setHoverLeg = useInteraction((s) => s.setHoverLeg)
 
   if (!loaded || !params) {
@@ -220,6 +232,8 @@ export default function PlanPanel({ part }: { part: PlanPart }) {
             show={(v) => `${v}°`}
             note={assumptionNote(assumptions, 'slope_limit_plan_deg')}
             onCommit={(v) => commit({ slopeLimitDeg: v })}
+            pulsing={slopePulsing}
+            hint="Drag it: the route and verdict update"
           />
           <ReleaseSlider
             label="Carried equipment"

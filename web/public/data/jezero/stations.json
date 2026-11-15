@@ -95,5 +95,63 @@
         "credit": "NASA/JPL-Caltech"
       }
     ]
+  },
+  {
+    "id": "S4",
+    "name": "Rochette (first rock cores)",
+    "lat": 18.4307394,
+    "lon": 77.44436574,
+    "task": "Find the two drill holes on Rochette where Perseverance took its first rock cores, Montdenier and Montagnac, and sample the same crater-floor rock beside them.",
+    "dwell_s": 1200,
+    "sol": 180,
+    "photos": [
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00180/ids/edr/browse/ncam/NLE_0180_0682926505_614ECM_N0062770SAPP00601_00_0LLJ01_1200.jpg",
+        "camera": "NAVCAM_LEFT",
+        "sol": 180,
+        "credit": "NASA/JPL-Caltech"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00180/ids/edr/browse/zcam/ZR7_0180_0682916963_294EBY_N0062666ZCAM01005_0260LMJ01_1200.jpg",
+        "camera": "MCZ_RIGHT",
+        "sol": 180,
+        "credit": "NASA/JPL-Caltech/ASU"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00180/ids/edr/browse/fcam/FRF_0180_0682927662_284EBY_N0070000FHAZ02008_07_0LLJ01_1200.jpg",
+        "camera": "FRONT_HAZCAM_RIGHT_A",
+        "sol": 180,
+        "credit": "NASA/JPL-Caltech"
+      }
+    ]
+  },
+  {
+    "id": "S5",
+    "name": "Roubion (first coring attempt)",
+    "lat": 18.42769464,
+    "lon": 77.45164982,
+    "task": "Look at the crumbly crater-floor rock that broke apart during Perseverance's first coring attempt, and fill an empty tube with an air sample, as the rover's tube did by accident.",
+    "dwell_s": 1200,
+    "sol": 157,
+    "photos": [
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00157/ids/edr/browse/ncam/NLR_0157_0680885622_932ECM_N0060000NCAM02157_01_195J01_1200.jpg",
+        "camera": "NAVCAM_LEFT",
+        "sol": 157,
+        "credit": "NASA/JPL-Caltech"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00157/ids/edr/browse/zcam/ZL7_0157_0680864768_467EBY_N0052512ZCAM01000_0260LMJ01_1200.jpg",
+        "camera": "MCZ_LEFT",
+        "sol": 157,
+        "credit": "NASA/JPL-Caltech/ASU"
+      },
+      {
+        "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00157/ids/edr/browse/fcam/FLE_0157_0680884496_300ECM_N0060000FHAZ02008_08_0LLJ01_1200.jpg",
+        "camera": "FRONT_HAZCAM_LEFT_A",
+        "sol": 157,
+        "credit": "NASA/JPL-Caltech"
+      }
+    ]
   }
 ]

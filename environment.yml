@@ -9,4 +9,6 @@ dependencies:
   - numpy
   - pyyaml
   - pillow
+  - pyogrio
+  - shapely
   - pytest

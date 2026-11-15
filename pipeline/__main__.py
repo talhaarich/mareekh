@@ -20,6 +20,7 @@ from pipeline.steps import (
     write_manifest,
 )
 from pipeline.steps.overlays import classes_present
+from pipeline.steps.units import rasterize_units
 
 # No-data value written into dem.bin and slope.bin (the value used in docs/specs examples).
 GRID_NODATA = -9999.0
@@ -83,6 +84,21 @@ def build(manifest_path: str) -> None:
             if not src or not Path(src).exists():
                 print(f"WARNING: skipping layer '{layer['id']}': source file {src!r} not found", file=sys.stderr)
                 continue
+            if layer.get("render") == "units":
+                burned = rasterize_units(
+                    src,
+                    layer["layer"],
+                    layer["field"],
+                    str(dem_tif),
+                    str(out_dir / layer["url"]),
+                    layer["classes"],
+                    scale=int(layer.get("options", {}).get("scale", 1)),
+                )
+                layer_meta["coordinates"] = burned["coordinates"]
+                layer_meta["legend"] = burned["legend"]
+                layer_results.append(layer_meta)
+                print(f"layer: {layer['id']}")
+                continue
             layer_meta["coordinates"] = export_png(
                 src,
                 bounds,
@@ -99,7 +115,11 @@ def build(manifest_path: str) -> None:
             tiles_dir = (out_dir / layer["url"]).parent
             shutil.rmtree(tiles_dir, ignore_errors=True)  # no stale tiles from an earlier box or zoom range
             opts = layer.get("options", {})
-            tj = terrain_tiles(dem, tuple(meta["bounds"]), str(tiles_dir), int(opts["minzoom"]), int(opts["maxzoom"]))
+            t_dem, t_bounds = dem, tuple(meta["bounds"])
+            if "bounds" in opts:  # a wider area than the walk box, clipped from the same height file
+                t_meta = clip_dem(config["dem_src"], tuple(opts["bounds"]), str(build_dir / "terrain.tif"))
+                t_dem, t_bounds = load_dem(str(build_dir / "terrain.tif")), tuple(t_meta["bounds"])
+            tj = terrain_tiles(t_dem, t_bounds, str(tiles_dir), int(opts["minzoom"]), int(opts["maxzoom"]))
             print(f"terrain: {tj['tile_count']} tiles, zoom {tj['minzoom']}-{tj['maxzoom']}")
             layer_meta["legend"] = layer.get("legend", [])
 

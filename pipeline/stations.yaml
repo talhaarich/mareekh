@@ -21,3 +21,13 @@ stations:
     sol: 464            # near the end of the Hawksbill Gap ascent, sols 437-470 (Russell et al., LPSC 2023). Waypoint height -2522.08 m, 17.9 m above S2 and 23.1 m above S1.
     dwell_s: 1200
     task: "Sample the layered rocks of the delta front at the top of the Hawksbill Gap climb, about 18 m above the delta base, to compare them with the samples taken at its foot."
+  - id: S4
+    name: Rochette (first rock cores)
+    sol: 180            # last drive before the first cores, Montdenier (sol 190, 1 Sep 2021) and Montagnac (sol 196) (NASA/JPL). No waypoint on sols 181-198, so the rover stood here for both. Waypoint height -2574.52 m.
+    dwell_s: 1200
+    task: "Find the two drill holes on Rochette where Perseverance took its first rock cores, Montdenier and Montagnac, and sample the same crater-floor rock beside them."
+  - id: S5
+    name: Roubion (first coring attempt)
+    sol: 157            # last drive before the Roubion coring attempt on sol 164 (6 Aug 2021), when the rock crumbled and the sealed tube held Mars air instead (NASA/JPL). No waypoint on sols 158-167. Waypoint height -2584.92 m.
+    dwell_s: 1200
+    task: "Look at the crumbly crater-floor rock that broke apart during Perseverance's first coring attempt, and fill an empty tube with an air sample, as the rover's tube did by accident."

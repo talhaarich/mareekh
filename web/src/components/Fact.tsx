@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 /** Section heading used by the right-panel sections. */
 export function SectionTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">{children}</h2>
+  return <h2 className="font-display text-[15px] font-semibold uppercase tracking-[0.08em] text-fg">{children}</h2>
 }
 
 /** One number on screen: label, value with its unit, and where it came from (or "sample"). */

@@ -14,7 +14,9 @@ import { usePins } from '../state/pins'
 import { usePlan } from '../state/plan'
 import { usePosition } from '../state/position'
 import { useView } from '../state/view'
-import { ANCHOR_DATA, ANCHOR_OVERLAYS } from './anchors'
+import { ANCHOR_BACKDROP, ANCHOR_DATA, ANCHOR_OVERLAYS } from './anchors'
+import { CAMERA_PRESETS } from './cameraPresets'
+import { addRouteArrow, ROUTE_ARROW } from './routeArrow'
 import { useInteraction } from './interaction'
 import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './layers'
 import MapLabels, { type LabelItem } from './MapLabels'
@@ -59,7 +61,7 @@ function KeyBlock({ title, layer, missing }: { title: string; layer: ImageLayer;
 }
 
 /** The planned route in the route colour. The leg under the pointer in the leg table is drawn thicker. */
-function RouteLayer() {
+function RouteLayer({ arrows }: { arrows: boolean }) {
   const result = usePlan((s) => s.result)
   const hoverLeg = useInteraction((s) => s.hoverLeg)
   const routeColor = useMemo(() => readToken('--color-route'), [])
@@ -100,6 +102,22 @@ function RouteLayer() {
         layout={{ 'line-cap': 'round', 'line-join': 'round' }}
         paint={{ 'line-color': routeColor, 'line-width': 7, 'line-opacity': 1 }}
       />
+      {/* Direction of walk; the image is registered in onLoad, before this layer can mount. */}
+      {arrows && (
+        <Layer
+          id="mm-route-arrows"
+          type="symbol"
+          layout={{
+            'symbol-placement': 'line',
+            'symbol-spacing': 110,
+            'icon-image': ROUTE_ARROW,
+            'icon-size': 0.95,
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+            'icon-rotation-alignment': 'map',
+          }}
+        />
+      )}
     </Source>
   )
 }
@@ -166,18 +184,33 @@ export default function MissionMap() {
         'fog-ground-blend': 0.9,
         'atmosphere-blend': 0,
       },
-      shadow: readToken('--color-bg'),
-      highlight: readToken('--color-fg'),
+      relief: [1, 2, 3, 4].map((i) => readToken(`--color-relief-${i}`)),
+      shadow: readToken('--color-shade-dark'),
+      highlight: readToken('--color-shade-light'),
     }),
     [],
   )
 
-  // Tilt into 3D, flat again for 2D.
+  // 3D opens looking along the delta front; 2D goes flat and frames the walk box again.
+  const cameraPreset = useInteraction((s) => s.cameraPreset)
+  const setCameraPreset = useInteraction((s) => s.setCameraPreset)
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
-    map.easeTo(terrainOn ? { pitch: 62, bearing: -25, duration: 1200 } : { pitch: 0, bearing: 0, duration: 800 })
-  }, [mapReady, terrainOn])
+    if (terrainOn) {
+      setCameraPreset('delta')
+    } else if (manifest) {
+      const [s, w, n, e] = manifest.region.bounds
+      map.easeTo({ pitch: 0, bearing: 0, duration: 600 })
+      map.fitBounds([[w, s], [e, n]], { padding: 48, duration: 800, pitch: 0, bearing: 0 })
+    }
+  }, [mapReady, terrainOn, manifest, setCameraPreset])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || !cameraPreset) return
+    const p = CAMERA_PRESETS[cameraPreset.name]
+    map.flyTo({ center: p.center, zoom: p.zoom, pitch: p.pitch, bearing: p.bearing, duration: 2200, essential: true })
+  }, [mapReady, cameraPreset])
 
   const views = useMemo(() => viewLayers(manifest), [manifest])
   const overlays = useMemo(() => overlayLayers(manifest), [manifest])
@@ -193,6 +226,7 @@ export default function MissionMap() {
         { id: 'background', type: 'background', paint: { 'background-color': readToken('--color-bg') } },
         // Hidden anchors that fix the drawing order, whatever order layers mount in (pictures mount
         // late, after their availability check): views < overlays < everything else (route, ring, ...).
+        { id: ANCHOR_BACKDROP, type: 'background', layout: { visibility: 'none' } },
         { id: ANCHOR_OVERLAYS, type: 'background', layout: { visibility: 'none' } },
         { id: ANCHOR_DATA, type: 'background', layout: { visibility: 'none' } },
       ],
@@ -237,7 +271,7 @@ export default function MissionMap() {
       id: s.id,
       lat: s.lat,
       lon: s.lon,
-      text: `${s.id} · ${s.name}`,
+      text: s.name,
       onSelect: s.id === 'B' ? undefined : () => selectStation(s.id),
     }))
     for (const p of pins) {
@@ -284,7 +318,10 @@ export default function MissionMap() {
           if (target?.closest('.maplibregl-marker')) return
           setInspectAt({ lat: e.lngLat.lat, lon: e.lngLat.lng })
         }}
-        onLoad={() => setMapReady(true)}
+        onLoad={(e) => {
+          addRouteArrow(e.target)
+          setMapReady(true)
+        }}
         style={{ width: '100%', height: '100%' }}
       >
         {/* Views sit below ANCHOR_OVERLAYS, overlays below ANCHOR_DATA, and the route and the rest
@@ -317,8 +354,8 @@ export default function MissionMap() {
             </Source>
           ))}
 
-        {/* 3D: one height source for the terrain, a second for the hillshade (MapLibre's advice). Both
-            stay mounted once the tiles exist, so turning 3D on never waits for a source. */}
+        {/* One height source for 3D terrain, a second for the crater-wide relief shading under the
+            pictures, in 2D and 3D (MapLibre's advice: separate sources). Both stay mounted. */}
         {dem && (
           <Source
             id="mm-dem"
@@ -342,16 +379,33 @@ export default function MissionMap() {
             maxzoom={dem.maxzoom}
             bounds={dem.bounds}
           >
+            {dem.heightRangeM && (
+              <Layer
+                id="mm-relief"
+                type="color-relief"
+                beforeId={ANCHOR_BACKDROP}
+                paint={{
+                  'color-relief-color': [
+                    'interpolate',
+                    ['linear'],
+                    ['elevation'],
+                    ...look.relief.flatMap((c, i) => [
+                      dem.heightRangeM![0] + ((dem.heightRangeM![1] - dem.heightRangeM![0]) * i) / (look.relief.length - 1),
+                      c,
+                    ]),
+                  ],
+                }}
+              />
+            )}
             <Layer
               id="mm-hillshade"
               type="hillshade"
-              beforeId={ANCHOR_OVERLAYS}
-              layout={{ visibility: terrainOn ? 'visible' : 'none' }}
+              beforeId={ANCHOR_BACKDROP}
               paint={{
                 'hillshade-shadow-color': look.shadow,
                 'hillshade-highlight-color': look.highlight,
                 'hillshade-accent-color': look.shadow,
-                'hillshade-exaggeration': 0.35,
+                'hillshade-exaggeration': 0.6,
                 'hillshade-illumination-direction': 315,
               }}
             />
@@ -361,7 +415,7 @@ export default function MissionMap() {
         <SlopeGridLayer visible={overlay === SLOPE_OVERLAY_ID} opacity={overlayStrength} />
         <ReachLayer />
 
-        <RouteLayer />
+        <RouteLayer arrows={mapReady} />
         {showPosition && <UncertaintyRingLayer center={estimate} radiusM={uncertaintyM} />}
 
         {stations.map((s) => (
@@ -370,7 +424,7 @@ export default function MissionMap() {
               <div
                 role="img"
                 aria-label="Base"
-                className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-fg bg-brand text-[11px] font-bold text-bg"
+                className="flex h-6 w-6 items-center justify-center rounded-[3px] border-2 border-fg bg-brand font-mono text-[11px] font-bold text-bg shadow-[0_0_0_2px] shadow-bg"
               >
                 B
               </div>
@@ -381,9 +435,9 @@ export default function MissionMap() {
                 onClick={() => {
                   if (!pinDropType) selectStation(s.id)
                 }}
-                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 border-fg bg-panel text-[11px] font-bold text-fg"
+                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 border-bg bg-fg font-mono text-[11px] font-bold text-bg shadow-[0_0_0_2px] shadow-fg/40"
               >
-                {s.id}
+                {s.id.replace(/^S/, '')}
               </button>
             )}
           </Marker>

@@ -148,6 +148,8 @@ def terrain_tiles(
         "bounds": [west, south, east, north],
         "encoding": "mapbox",
         "tile_count": count,
+        # Lowest and highest height in the tiled area, metres: lets the app tint by height without guessing.
+        "height_range_m": [round(float(np.nanmin(dem)), 1), round(float(np.nanmax(dem)), 1)],
     }
     out.mkdir(parents=True, exist_ok=True)
     (out / "tiles.json").write_text(json.dumps(tilejson, indent=2) + "\n", encoding="utf-8")

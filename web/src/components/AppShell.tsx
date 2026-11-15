@@ -40,20 +40,33 @@ export default function AppShell({ left, right, children, regionName, notice }: 
 
   return (
     <div className="flex h-dvh w-screen flex-col overflow-hidden bg-bg font-sans text-fg print:hidden">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-line bg-panel px-4">
-        <div className="flex items-baseline gap-3">
-          <span className="text-sm font-bold uppercase tracking-[0.2em] text-brand">Martian Map</span>
-          {regionName && <span className="hidden text-sm text-fg-muted sm:inline">{regionName}</span>}
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-panel px-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <span className="font-display text-xl font-bold tracking-wide text-fg sm:text-2xl">Martian Map</span>
+          {regionName && (
+            <span className="hidden truncate text-sm text-fg-muted md:inline">EVA-1 · {regionName}</span>
+          )}
+          <span className="hidden shrink-0 rounded-full border border-line px-3 py-0.5 font-mono text-xs text-fg-muted xl:inline">
+            Real Jezero data · planning and rehearsal, not mission-critical
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="hidden text-xs text-fg-muted md:inline">Planning and rehearsal. Not mission-critical.</span>
-          <button
-            type="button"
-            onClick={() => setMode('eva')}
-            className="rounded border border-route px-2 py-1 text-xs font-semibold text-route"
-          >
-            EVA mode
-          </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <div role="group" aria-label="Mode" className="flex">
+            <button
+              type="button"
+              aria-pressed="true"
+              className="hidden rounded-l-[3px] border border-brand bg-brand px-3 py-1.5 text-sm font-medium text-bg sm:block"
+            >
+              Plan
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('eva')}
+              className="rounded-[3px] border border-line sm:-ml-px sm:rounded-l-none bg-panel-2 px-3 py-1.5 text-sm font-medium text-fg hover:border-fg-muted"
+            >
+              EVA mode
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => toggle('left')}
@@ -68,7 +81,7 @@ export default function AppShell({ left, right, children, regionName, notice }: 
             aria-expanded={open === 'right'}
             className="rounded border border-line px-2 py-1 text-xs text-fg lg:hidden"
           >
-            Plan
+            Details
           </button>
         </div>
       </header>

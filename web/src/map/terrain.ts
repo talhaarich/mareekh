@@ -10,6 +10,8 @@ export interface TerrainSource {
   /** [west, south, east, north] */
   bounds: [number, number, number, number]
   encoding: 'mapbox' | 'terrarium'
+  /** Lowest and highest height in the tiles, metres (pipeline-written TileJSON extra); null if absent. */
+  heightRangeM: [number, number] | null
 }
 
 /**
@@ -37,6 +39,10 @@ export function parseTileJson(raw: unknown, tileJsonUrl: string, origin: string)
     maxzoom: t.maxzoom,
     bounds: b as [number, number, number, number],
     encoding: t.encoding === 'terrarium' ? 'terrarium' : 'mapbox', // CONTRACTS: Mapbox terrain-RGB
+    heightRangeM:
+      Array.isArray(t.height_range_m) && t.height_range_m.length === 2 && t.height_range_m.every((v) => typeof v === 'number')
+        ? (t.height_range_m as [number, number])
+        : null,
   }
 }
 

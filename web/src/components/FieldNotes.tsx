@@ -17,7 +17,7 @@ export default function FieldNotes() {
 
   return (
     <section aria-label="Field notes" className="space-y-3">
-      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Field notes</h2>
+      <h2 className="font-display text-[15px] font-semibold uppercase tracking-[0.08em] text-fg">Field notes</h2>
 
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Drop a pin">
         {PIN_TYPES.map(({ type, label }) => {

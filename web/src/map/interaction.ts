@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { PinType } from '../state/pins'
+import type { CameraPreset } from './cameraPresets'
 
 /**
  * Ephemeral pointer state shared between my own components (leg table <-> map, markers <-> cards,
@@ -22,6 +23,8 @@ interface InteractionState {
   playSpeed: number
   /** Map point whose inspector card is open, or null. */
   inspectAt: { lat: number; lon: number } | null
+  /** Camera view the 3D map should fly to; `seq` changes on every request. */
+  cameraPreset: { name: CameraPreset; seq: number } | null
 
   setHoverLeg: (i: number | null) => void
   /** Opening a station card closes the pin editor: one card over the map at a time. */
@@ -33,6 +36,7 @@ interface InteractionState {
   setPlaying: (on: boolean) => void
   setPlaySpeed: (speed: number) => void
   setInspectAt: (p: { lat: number; lon: number } | null) => void
+  setCameraPreset: (name: CameraPreset) => void
 }
 
 export const useInteraction = create<InteractionState>()((set, get) => ({
@@ -44,6 +48,7 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   playing: false,
   playSpeed: 60,
   inspectAt: null,
+  cameraPreset: null,
 
   setHoverLeg: (i) => set({ hoverLeg: i }),
   selectStation: (id) => set(id === null ? { selectedStationId: null } : { selectedStationId: id, editingPinId: null }),
@@ -53,4 +58,5 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   setPlaying: (on) => set({ playing: on }),
   setPlaySpeed: (speed) => set({ playSpeed: speed }),
   setInspectAt: (p) => set({ inspectAt: p }),
+  setCameraPreset: (name) => set({ cameraPreset: { name, seq: (get().cameraPreset?.seq ?? 0) + 1 } }),
 }))

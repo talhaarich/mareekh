@@ -1,14 +1,25 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useInteraction } from '../map/interaction'
+import { useTerrainSource } from '../map/terrain'
+import { useData } from '../state/data'
 import { useView } from '../state/view'
+import IconButton from './IconButton'
 import UiIcon from './icons'
 import StatusChip from './StatusChip'
+import Welcome from './Welcome'
 
 /** One floating panel: its rail button and what it shows. */
 export interface ShellPanel {
   id: string
+  /** Full name (panel title, screen readers). */
   label: string
+  /** One or two words under the rail icon. */
+  caption: string
+  /** Tooltip: what the panel holds. */
+  tip: string
+  /** First line of the panel: what it is for. */
+  intro: string
   icon: ReactNode
   content: ReactNode
 }
@@ -49,50 +60,6 @@ function typing(e: KeyboardEvent): boolean {
   return !!t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
 }
 
-/** A square icon button with a tooltip that shows on hover and on keyboard focus. */
-function RailButton({
-  label,
-  icon,
-  on,
-  onClick,
-  tipSide,
-  controls,
-  id,
-}: {
-  label: string
-  icon: ReactNode
-  on: boolean
-  onClick: () => void
-  tipSide: Side
-  controls?: string
-  id?: string
-}) {
-  return (
-    <button
-      id={id}
-      type="button"
-      aria-label={label}
-      aria-pressed={controls ? undefined : on}
-      aria-expanded={controls ? on : undefined}
-      aria-controls={controls}
-      onClick={onClick}
-      className={`group relative flex h-10 w-10 items-center justify-center rounded-md border shadow-lg backdrop-blur transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fg ${
-        on ? 'border-brand bg-brand text-bg' : 'border-line bg-panel/95 text-fg hover:border-fg-muted'
-      }`}
-    >
-      {icon}
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded border border-line bg-panel px-2 py-1 text-xs font-medium text-fg opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 ${
-          tipSide === 'right' ? 'left-full ml-2' : 'right-full mr-2'
-        }`}
-      >
-        {label}
-      </span>
-    </button>
-  )
-}
-
 /**
  * Map-first layout: the map fills the window. Small icon rails at the left and right edges open the
  * panels as compact floating panels over the map (bottom sheets on phones), one per side at a time.
@@ -101,6 +68,11 @@ function RailButton({
  */
 export default function AppShell({ leftPanels, rightPanels, children, regionName, notice }: AppShellProps) {
   const setMode = useView((s) => s.setMode)
+  const terrain3d = useView((s) => s.terrain3d)
+  const setTerrain3d = useView((s) => s.setTerrain3d)
+  const dem = useTerrainSource(useData((s) => s.manifest))
+  const openWelcome = useInteraction((s) => s.setWelcomeOpen)
+  const welcomeOpen = useInteraction((s) => s.welcomeOpen)
   const setMapInsets = useInteraction((s) => s.setMapInsets)
   const phone = usePhone()
   const [open, setOpen] = useState<Record<Side, string | null>>({ left: null, right: null })
@@ -159,6 +131,19 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
     }
   }, [closeAll])
 
+  // Other parts of the app (the welcome card) can ask for a panel to open.
+  useEffect(
+    () =>
+      useInteraction.subscribe((s, prev) => {
+        const r = s.panelRequest
+        if (!r || r === prev.panelRequest) return
+        lastOpened.current = r.id
+        setHidden(false)
+        setOpen((cur) => (window.matchMedia?.(PHONE_QUERY).matches ? { left: null, right: null, [r.side]: r.id } : { ...cur, [r.side]: r.id }))
+      }),
+    [],
+  )
+
   // On a phone a sheet covers the map: close it when a pin type is picked, so the map can be clicked.
   useEffect(
     () =>
@@ -212,8 +197,9 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
         if (phone && panel) bottom = Math.max(bottom, m.bottom - panel.top)
       }
       const insets = { top: Math.round(top), right: Math.round(right), bottom: Math.round(bottom), left: Math.round(left) }
-      // The boxes themselves: each top-bar piece, both rails and any open panel.
+      // The boxes themselves: each top-bar piece, both rails, any open panel and the welcome card.
       const boxes = [
+        rootRef.current?.querySelector('[aria-labelledby="welcome-title"]') ?? null,
         ...Array.from(topRef.current?.querySelectorAll(':scope > *, :scope > * > *') ?? []).filter((el) => el.getBoundingClientRect().width > 0),
         railRef.current.left,
         railRef.current.right,
@@ -241,11 +227,11 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
       if (el) ro.observe(el)
     }
     return () => ro.disconnect()
-  }, [open, hidden, phone, notice, setMapInsets])
+  }, [open, hidden, phone, notice, welcomeOpen, setMapInsets])
 
   const panelBox = phone
     ? 'absolute inset-x-0 bottom-0 z-40 max-h-[60%] rounded-t-lg border-t'
-    : 'absolute top-[calc(var(--mm-inset-top,0px)+0.5rem)] z-40 max-h-[calc(100%-var(--mm-inset-top,0px)-1.25rem)] w-80 max-w-[calc(100%-7rem)] rounded-md border'
+    : 'absolute top-[calc(var(--mm-inset-top,0px)+0.5rem)] z-40 max-h-[calc(100%-var(--mm-inset-top,0px)-1.25rem)] w-80 max-w-[calc(100%-12rem)] rounded-md border'
 
   const renderSide = (side: Side, panels: ShellPanel[]) => {
     const current = panels.find((p) => p.id === open[side]) ?? null
@@ -262,9 +248,11 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
           className={`absolute top-[calc(var(--mm-inset-top,0px)+0.5rem)] z-30 flex flex-col gap-1.5 ${side === 'left' ? 'left-3' : 'right-3'}`}
         >
           {panels.map((p) => (
-            <RailButton
+            <IconButton
               key={p.id}
+              caption={p.caption}
               label={p.label}
+              tip={p.tip}
               icon={p.icon}
               on={open[side] === p.id}
               onClick={() => toggle(side, p.id)}
@@ -283,7 +271,7 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
             role="dialog"
             aria-label={current.label}
             tabIndex={-1}
-            className={`${panelBox} ${phone ? '' : side === 'left' ? 'left-16' : 'right-16'} overflow-y-auto border-line bg-panel/95 p-4 text-fg shadow-xl outline-none backdrop-blur`}
+            className={`${panelBox} ${phone ? '' : side === 'left' ? 'left-[5.5rem]' : 'right-[5.5rem]'} overflow-y-auto border-line bg-panel/95 p-4 text-fg shadow-xl outline-none backdrop-blur`}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="text-xs font-medium uppercase tracking-[0.08em] text-fg-muted">{current.label}</span>
@@ -296,6 +284,7 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
                 ✕
               </button>
             </div>
+            <p className="mb-3 text-xs leading-snug text-fg">{current.intro}</p>
             {current.content}
           </div>
         )}
@@ -314,7 +303,8 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
       </main>
 
       {/* Top bar: name, always-on status, mode and view toggles. Floats over the map. */}
-      <div ref={topRef} className="pointer-events-none absolute inset-x-3 top-3 z-30 flex items-start justify-between gap-2">
+      {/* On a phone the toolbar takes the first row and the status the second, so neither covers the other. */}
+      <div ref={topRef} className="pointer-events-none absolute inset-x-3 top-3 z-30 flex flex-wrap items-start justify-between gap-2 sm:flex-nowrap">
         <div
           title="Real Jezero data · planning and rehearsal, not mission-critical"
           className="pointer-events-auto hidden min-w-0 items-center gap-3 rounded-md border border-line bg-panel/95 px-3 py-1.5 shadow-lg backdrop-blur sm:flex"
@@ -326,7 +316,7 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-col items-start gap-2 sm:items-center">
+        <div className="order-2 flex w-full min-w-0 flex-col items-start gap-2 sm:order-none sm:w-auto sm:items-center">
           <StatusChip />
           {notice && (
             <div role="alert" className="pointer-events-auto max-w-md rounded-md border border-line bg-panel/95 px-3 py-1.5 text-xs text-fg-muted shadow">
@@ -335,28 +325,48 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
           )}
         </div>
 
-        <div className="pointer-events-auto flex shrink-0 items-center gap-1.5">
+        <div className="pointer-events-auto order-1 ml-auto flex shrink-0 items-stretch gap-1 sm:order-none sm:ml-0 sm:gap-1.5">
           <button
             type="button"
             onClick={() => setMode('eva')}
-            className="h-10 rounded-md border border-line bg-panel/95 px-3 text-sm font-medium text-fg shadow-lg backdrop-blur hover:border-fg-muted"
+            title="A simple big-type screen for use outside: next stop, time left, way home"
+            className="rounded-md border border-line bg-panel/95 px-2 text-sm font-medium text-fg shadow-lg backdrop-blur hover:border-fg-muted sm:px-3"
           >
-            EVA mode
+            EVA<span className="hidden sm:inline"> mode</span>
           </button>
-          <RailButton
+          <IconButton
+            caption="Help"
+            label="Help: show the welcome card"
+            tip="What this map is, and three things to try"
+            icon={<UiIcon name="help" />}
+            onClick={() => openWelcome(true)}
+          />
+          <IconButton
+            caption="3D"
+            label="3D terrain"
+            tip={dem ? 'Show the crater in 3D (the terrain rises from the flat map)' : 'No height tiles built yet'}
+            icon={<UiIcon name="cube" />}
+            on={terrain3d}
+            disabled={!dem}
+            onClick={() => setTerrain3d(!terrain3d)}
+          />
+          <IconButton
+            caption={hidden ? 'Show' : 'Hide'}
             label={hidden ? 'Show panels' : 'Hide panels'}
+            tip={hidden ? 'Show the side buttons and panels again' : 'Hide the side buttons and panels to see the whole map (the status stays)'}
             icon={<UiIcon name={hidden ? 'show' : 'hide'} />}
             on={hidden}
             onClick={() => setHidden((h) => !h)}
-            tipSide="left"
           />
           {canFullscreen && (
-            <RailButton
-              label={full ? 'Leave full screen (F)' : 'Full screen (F)'}
+            <IconButton
+              caption="Full screen"
+              wide
+              label={full ? 'Leave full screen' : 'Full screen'}
+              tip={full ? 'Leave full screen (F)' : 'Fill the whole screen with the map (F)'}
               icon={<UiIcon name={full ? 'exitFullscreen' : 'fullscreen'} />}
               on={full}
               onClick={toggleFull}
-              tipSide="left"
             />
           )}
         </div>
@@ -364,6 +374,7 @@ export default function AppShell({ leftPanels, rightPanels, children, regionName
 
       {!hidden && renderSide('left', leftPanels)}
       {!hidden && renderSide('right', rightPanels)}
+      <Welcome />
     </div>
   )
 }

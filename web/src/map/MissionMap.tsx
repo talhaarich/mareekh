@@ -6,6 +6,7 @@ import type { StyleSpecification } from 'maplibre-gl'
 import Inspector from '../components/Inspector'
 import PinEditor from '../components/PinEditor'
 import StationCard from '../components/StationCard'
+import { defaultStops, useWalkStops } from '../components/walkStops'
 import { fmtDuration } from '../components/format'
 import { dataUrl } from '../lib/dataUrl'
 import { uncertaintyRing } from '../lib/helpers'
@@ -149,6 +150,8 @@ export default function MissionMap() {
   const turnBack = usePlan((s) => s.result?.turnBack ?? null)
   const selectStation = useInteraction((s) => s.selectStation)
   const pins = usePins((s) => s.pins)
+  const included = useWalkStops((s) => s.included)
+  const inWalk = useMemo(() => new Set(included ?? defaultStops(stations)), [stations, included])
   const pinDropType = useInteraction((s) => s.pinDropType)
   const setPinDropType = useInteraction((s) => s.setPinDropType)
   const editPin = useInteraction((s) => s.editPin)
@@ -435,7 +438,12 @@ export default function MissionMap() {
                 onClick={() => {
                   if (!pinDropType) selectStation(s.id)
                 }}
-                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-2 border-bg bg-fg font-mono text-[11px] font-bold text-bg shadow-[0_0_0_2px] shadow-fg/40"
+                className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded-full font-mono text-[11px] font-bold ${
+                  inWalk.has(s.id)
+                    ? 'border-2 border-bg bg-fg text-bg shadow-[0_0_0_2px] shadow-fg/40'
+                    : 'border-2 border-dashed border-fg/80 bg-bg/80 text-fg'
+                }`}
+                title={inWalk.has(s.id) ? undefined : 'Optional destination: open its card to add it to the walk'}
               >
                 {s.id.replace(/^S/, '')}
               </button>

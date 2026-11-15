@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AppShell from './components/AppShell'
+import Destinations from './components/Destinations'
 import EvaScreen from './components/EvaScreen'
 import FieldNotes from './components/FieldNotes'
 import LayerControls from './components/LayerControls'
@@ -50,6 +51,7 @@ export default function App() {
         right={
           <div className="space-y-8">
             <PlanPanel />
+            <Destinations />
             <RehearsalPanel />
             <SafetyPanel />
             <LimitsPanel />

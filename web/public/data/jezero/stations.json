@@ -153,5 +153,65 @@
         "credit": "NASA/JPL-Caltech"
       }
     ]
+  },
+  {
+    "id": "S6",
+    "name": "Dark mantling low ground",
+    "lat": 18.4264,
+    "lon": 77.4712,
+    "task": "Walk down into the low patch of dark-coloured mantling material south-east of base, about 45 m below the surrounding floor, and sample the dark surface layer.",
+    "dwell_s": 1200,
+    "sol": null,
+    "photos": []
+  },
+  {
+    "id": "S7",
+    "name": "East butte (fan remnant)",
+    "lat": 18.4696,
+    "lon": 77.4965,
+    "task": "Climb the isolated butte east of base that the geologic map puts in the same unit as the delta, about 45 m above the floor, and sample its cap rock to compare with the delta samples.",
+    "dwell_s": 1200,
+    "sol": null,
+    "photos": []
+  },
+  {
+    "id": "S8",
+    "name": "North-east crater",
+    "lat": 18.4964,
+    "lon": 77.4879,
+    "task": "Survey the small crater north-east of base and sample rock thrown out of it, which comes from below the crater floor surface.",
+    "dwell_s": 1200,
+    "sol": null,
+    "photos": []
+  },
+  {
+    "id": "S9",
+    "name": "North crater rim",
+    "lat": 18.4998,
+    "lon": 77.4623,
+    "task": "Climb onto the rim of the small crater north of base, where slopes reach about 11 degrees, and photograph the crater interior.",
+    "dwell_s": 1200,
+    "sol": null,
+    "photos": []
+  },
+  {
+    "id": "S10",
+    "name": "Delta top summit",
+    "lat": 18.4991,
+    "lon": 77.3919,
+    "task": "Reach the highest point of the walk area on top of the delta, about 145 m above the crater floor, sample the top layer and photograph the whole walk below.",
+    "dwell_s": 1200,
+    "sol": null,
+    "photos": []
+  },
+  {
+    "id": "S11",
+    "name": "Central crater",
+    "lat": 18.4554,
+    "lon": 77.4407,
+    "task": "On the way home, sample the rock thrown out of the small crater between base and the delta.",
+    "dwell_s": 1200,
+    "sol": null,
+    "photos": []
   }
 ]

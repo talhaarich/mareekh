@@ -24,9 +24,11 @@ sample the delta at its base and its top, and walk home. Martian Map plans that 
 - **Reach from base.** Distance rings (including NASA's 10 km walk-back limit) or walk-time lines: how
   long the walk home takes from anywhere, at 30, 60 and 90 minutes.
 - **Click inspector.** Click anywhere for height, slope, whether you may walk there, and the time home.
-- **Five stations from where Perseverance actually stood**: the Three Forks sample depot, the delta's
+- **Eleven destinations. Five are where Perseverance actually stood**: the Three Forks sample depot, the delta's
   base and top, Rochette (its first rock cores) and Roubion (its first coring attempt), with the rover's
-  own photos and credits.
+  own photos and credits. Six more destinations from the USGS geologic map (craters, a delta-remnant
+  butte, the delta top, dark mantling ground) are spread over the map: tick any of them to add it to
+  the walk, and the plan shows at once whether it still fits the time limit.
 - **Safety and honest limits.** Radiation (Curiosity's Gale crater measurement, said so on screen),
   dust, temperature and pressure from Perseverance's MEDA, and a list of what the tool cannot know.
   Every number on screen has a unit and a source.

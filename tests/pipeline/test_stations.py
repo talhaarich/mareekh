@@ -124,3 +124,23 @@ def test_build_fails_on_unknown_sol(tmp_path):
     jez, st = _write_inputs(tmp_path, BOX, sol=999)
     with pytest.raises(StationError, match="no waypoint for sol 999"):
         build_stations(st, jez, WAYPOINTS, tmp_path / "o.json", mars_radius_m=R)
+
+
+def test_a_mapped_feature_station_takes_lat_lon_and_has_no_sol(tmp_path):
+    jez, st = _write_inputs(tmp_path, BOX)
+    spec = yaml.safe_load(open(st, encoding="utf-8"))
+    spec["stations"].append(
+        {"id": "S2", "name": "Crater", "lat": 18.45, "lon": 77.45, "source": "USGS SIM 3464", "dwell_s": 600, "task": "Look."}
+    )
+    open(st, "w", encoding="utf-8").write(yaml.safe_dump(spec))
+    data = build_stations(st, jez, WAYPOINTS, tmp_path / "o.json", mars_radius_m=R, photos_fn=lambda sol: [{"sol": sol}])
+    assert data[2] == {"id": "S2", "name": "Crater", "lat": 18.45, "lon": 77.45, "task": "Look.", "dwell_s": 600, "sol": None, "photos": []}
+
+
+def test_a_station_without_sol_needs_position_and_source(tmp_path):
+    jez, st = _write_inputs(tmp_path, BOX)
+    spec = yaml.safe_load(open(st, encoding="utf-8"))
+    spec["stations"].append({"id": "S2", "name": "Crater", "lat": 18.45, "lon": 77.45, "dwell_s": 600, "task": "Look."})
+    open(st, "w", encoding="utf-8").write(yaml.safe_dump(spec))
+    with pytest.raises(StationError, match="source"):
+        build_stations(st, jez, WAYPOINTS, tmp_path / "o.json", mars_radius_m=R)

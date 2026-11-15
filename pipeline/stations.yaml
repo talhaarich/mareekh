@@ -31,3 +31,52 @@ stations:
     sol: 157            # last drive before the Roubion coring attempt on sol 164 (6 Aug 2021), when the rock crumbled and the sealed tube held Mars air instead (NASA/JPL). No waypoint on sols 158-167. Waypoint height -2584.92 m.
     dwell_s: 1200
     task: "Look at the crumbly crater-floor rock that broke apart during Perseverance's first coring attempt, and fill an empty tube with an air sample, as the rover's tube did by accident."
+
+  # ---- Optional destinations: mapped features, not rover stops (no sol, no rover photos). ----
+  # Positions come from the USGS geologic map (Sun and Stack 2020, SIM 3464; data/raw/sim3464_JezeroNili_FINAL):
+  # a mapped small crater's point, or a point inside a mapped unit or surface feature (the summit for buttes).
+  # Heights in the notes are from our CTX height grid; "floor" is the grid's median height, -2560 m.
+  # Numbered clockwise from S5, so any set of them still walks as a loop. The default walk (EVA-1) is the
+  # rover stops S1-S5; the app lets the crew add these.
+  - id: S6
+    name: Dark mantling low ground
+    lat: 18.4264
+    lon: 77.4712
+    source: "USGS SIM 3464 SurfaceFeatures: dark-colored mantling material. Height -2606 m, 46 m below the floor."
+    dwell_s: 1200
+    task: "Walk down into the low patch of dark-coloured mantling material south-east of base, about 45 m below the surrounding floor, and sample the dark surface layer."
+  - id: S7
+    name: East butte (fan remnant)
+    lat: 18.4696
+    lon: 77.4965
+    source: "USGS SIM 3464 GeoUnits: Jezero fan 2 unit, isolated piece; summit of the piece. Height -2517 m, 43 m above the floor."
+    dwell_s: 1200
+    task: "Climb the isolated butte east of base that the geologic map puts in the same unit as the delta, about 45 m above the floor, and sample its cap rock to compare with the delta samples."
+  - id: S8
+    name: North-east crater
+    lat: 18.4964
+    lon: 77.4879
+    source: "USGS SIM 3464 LocationFeatures: small crater. Height -2561 m."
+    dwell_s: 1200
+    task: "Survey the small crater north-east of base and sample rock thrown out of it, which comes from below the crater floor surface."
+  - id: S9
+    name: North crater rim
+    lat: 18.4998
+    lon: 77.4623
+    source: "USGS SIM 3464 LocationFeatures: small crater. Height -2551 m; slope about 11 degrees on its rim (our slope grid)."
+    dwell_s: 1200
+    task: "Climb onto the rim of the small crater north of base, where slopes reach about 11 degrees, and photograph the crater interior."
+  - id: S10
+    name: Delta top summit
+    lat: 18.4991
+    lon: 77.3919
+    source: "USGS SIM 3464 GeoUnits: Jezero fan 2 unit; the highest cell of it in the walk box. Height -2415 m, 145 m above the floor."
+    dwell_s: 1200
+    task: "Reach the highest point of the walk area on top of the delta, about 145 m above the crater floor, sample the top layer and photograph the whole walk below."
+  - id: S11
+    name: Central crater
+    lat: 18.4554
+    lon: 77.4407
+    source: "USGS SIM 3464 LocationFeatures: small crater. Height -2566 m."
+    dwell_s: 1200
+    task: "On the way home, sample the rock thrown out of the small crater between base and the delta."

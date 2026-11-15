@@ -17,6 +17,8 @@ import { usePosition } from '../state/position'
 import { useView } from '../state/view'
 import { ANCHOR_BACKDROP, ANCHOR_DATA, ANCHOR_OVERLAYS } from './anchors'
 import { CAMERA_PRESETS } from './cameraPresets'
+import { groundSwallowsClick, isGroundRestoring } from './groundFlags'
+import { GroundOverlay, GroundViewController } from './GroundView'
 import { addRouteArrow, ROUTE_ARROW } from './routeArrow'
 import { useInteraction } from './interaction'
 import { overlayLayers, resolveBaseView, viewLayers, type ImageLayer } from './layers'
@@ -178,6 +180,13 @@ export default function MissionMap() {
   const dem = useTerrainSource(manifest)
   const terrainOn = terrain3d && dem !== null
 
+  // Ground view ("Stand here"): needs the 3D height tiles and the height grid.
+  const groundOn = useInteraction((s) => s.ground !== null)
+  const gridLoaded = useData((s) => s.grid !== null)
+  const setGroundAvailable = useInteraction((s) => s.setGroundAvailable)
+  useEffect(() => setGroundAvailable(dem !== null && gridLoaded), [dem, gridLoaded, setGroundAvailable])
+  const groundWas = useRef(groundOn)
+
   // Sky, fog and hillshade colours from tokens.css (MapLibre paints on a canvas, so no CSS variables).
   const look = useMemo(
     () => ({
@@ -202,7 +211,10 @@ export default function MissionMap() {
   const setCameraPreset = useInteraction((s) => s.setCameraPreset)
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map) return
+    // The ground view moves the camera itself, and puts it back (2D/3D setting included) when it ends.
+    const groundChanged = groundWas.current !== groundOn
+    groundWas.current = groundOn
+    if (!mapReady || !map || groundOn || groundChanged || isGroundRestoring()) return
     if (terrainOn) {
       setCameraPreset('delta')
     } else if (manifest) {
@@ -210,10 +222,10 @@ export default function MissionMap() {
       map.easeTo({ pitch: 0, bearing: 0, duration: 600 })
       map.fitBounds([[w, s], [e, n]], { padding: 48, duration: 800, pitch: 0, bearing: 0 })
     }
-  }, [mapReady, terrainOn, manifest, setCameraPreset])
+  }, [mapReady, terrainOn, manifest, setCameraPreset, groundOn])
   useEffect(() => {
     const map = mapRef.current
-    if (!mapReady || !map || !cameraPreset) return
+    if (!mapReady || !map || !cameraPreset || useInteraction.getState().ground) return
     const p = CAMERA_PRESETS[cameraPreset.name]
     map.flyTo({ center: p.center, zoom: p.zoom, pitch: p.pitch, bearing: p.bearing, duration: 2200, essential: true })
   }, [mapReady, cameraPreset])
@@ -265,7 +277,7 @@ export default function MissionMap() {
 
   // Fly to a pin picked in the field-notes list.
   useEffect(() => {
-    if (!mapReady || !flyTarget) return
+    if (!mapReady || !flyTarget || useInteraction.getState().ground) return
     const map = mapRef.current
     if (!map) return
     map.flyTo({ center: [flyTarget.lon, flyTarget.lat], zoom: Math.max(map.getZoom(), 14), duration: 800 })
@@ -278,7 +290,7 @@ export default function MissionMap() {
       lat: s.lat,
       lon: s.lon,
       text: s.name,
-      onSelect: s.id === 'B' ? undefined : () => selectStation(s.id),
+      onSelect: () => selectStation(s.id),
     }))
     for (const p of pins) {
       items.push({ id: `pin-${p.id}`, lat: p.lat, lon: p.lon, text: pinLabelText(p), onSelect: () => editPin(p.id) })
@@ -313,6 +325,7 @@ export default function MissionMap() {
         sky={terrainOn ? look.sky : undefined}
         cursor={pinDropType ? 'crosshair' : undefined}
         onClick={(e) => {
+          if (groundSwallowsClick()) return // that click skipped the ground-view flight
           if (pinDropType) {
             const id = usePins.getState().addPin(pinDropType, { lat: e.lngLat.lat, lon: e.lngLat.lng })
             setPinDropType(null)
@@ -427,13 +440,16 @@ export default function MissionMap() {
         {stations.map((s) => (
           <Marker key={s.id} latitude={s.lat} longitude={s.lon} anchor="center">
             {s.id === 'B' ? (
-              <div
-                role="img"
-                aria-label="Base"
-                className="flex h-6 w-6 items-center justify-center rounded-[3px] border-2 border-fg bg-brand font-mono text-[11px] font-bold text-bg shadow-[0_0_0_2px] shadow-bg"
+              <button
+                type="button"
+                aria-label="Open station card: Base"
+                onClick={() => {
+                  if (!pinDropType) selectStation(s.id)
+                }}
+                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-[3px] border-2 border-fg bg-brand font-mono text-[11px] font-bold text-bg shadow-[0_0_0_2px] shadow-bg"
               >
                 B
-              </div>
+              </button>
             ) : (
               <button
                 type="button"
@@ -502,10 +518,12 @@ export default function MissionMap() {
           </Marker>
         )}
 
-        <NavigationControl position="top-right" showCompass visualizePitch />
+        {/* Hidden in the ground view: zooming would move the viewer off the spot they stand on. */}
+        {!groundOn && <NavigationControl position="top-right" showCompass visualizePitch />}
       </MapGL>
 
-      {showLabels && (
+      {/* The screen-space labels are off in the ground view; station and base markers stay. */}
+      {showLabels && !groundOn && (
         <MapLabels
           mapRef={mapRef}
           containerRef={containerRef}
@@ -521,8 +539,13 @@ export default function MissionMap() {
         containerRef={containerRef}
         ready={mapReady}
         position={showPosition ? estimate : null}
-        onSelect={() => mapRef.current?.flyTo({ center: [estimate.lon, estimate.lat], duration: 800 })}
+        onSelect={() => {
+          if (!useInteraction.getState().ground) mapRef.current?.flyTo({ center: [estimate.lon, estimate.lat], duration: 800 })
+        }}
       />
+
+      <GroundViewController mapRef={mapRef} ready={mapReady} />
+      <GroundOverlay />
 
       <StationCard />
       <PinEditor />

@@ -5,7 +5,8 @@ import { overlayLayers, resolveBaseView, viewLayers } from '../map/layers'
 import { useLayerAvailability } from '../map/useLayerAvailability'
 import { SLOPE_OVERLAY_ID } from '../map/SlopeGridLayer'
 import { useTerrainSource } from '../map/terrain'
-import { useData } from '../state/data'
+import { exaggerationLabel, trueScaleFactor } from '../map/groundScale'
+import { assumptionValue, useData } from '../state/data'
 import { EXAGGERATION_MAX, EXAGGERATION_MIN, reachBlockedByOverlay, useView } from '../state/view'
 import type { Reach } from '../state/view'
 import { ChoiceButton, PanelTitle, Segmented } from './controls'
@@ -72,6 +73,12 @@ export default function LayerControls() {
 
   const v = useView()
   const flyTo3d = useInteraction((s) => s.setCameraPreset)
+  // The ground view sets 3D and the exaggeration itself, and puts them back when it ends.
+  const groundOn = useInteraction((s) => s.ground !== null)
+  const assumptions = useData((s) => s.assumptions)
+  const trueScale = assumptions.some((a) => a.key === 'mars_radius_m')
+    ? trueScaleFactor(assumptionValue(assumptions, 'mars_radius_m'))
+    : null
 
   const views = useMemo(() => viewLayers(manifest), [manifest])
   const overlays = useMemo(() => overlayLayers(manifest), [manifest])
@@ -108,26 +115,33 @@ export default function LayerControls() {
           value={v.terrain3d ? '3d' : '2d'}
           onChange={(d) => v.setTerrain3d(d === '3d')}
           options={[
-            { id: '2d', label: '2D' },
-            { id: '3d', label: '3D', disabled: !dem, title: dem ? undefined : 'No height tiles built yet' },
+            { id: '2d', label: '2D', disabled: groundOn, title: groundOn ? 'Leave the ground view first' : undefined },
+            { id: '3d', label: '3D', disabled: !dem || groundOn, title: !dem ? 'No height tiles built yet' : groundOn ? 'Leave the ground view first' : undefined },
           ]}
         />
         {v.terrain3d && dem && (
           <>
             <Slider
-              label={`Vertical exaggeration: ${v.exaggeration.toFixed(1)}× (display setting)`}
+              label={`Vertical exaggeration: ${
+                trueScale ? exaggerationLabel(v.exaggeration, trueScale) : `${v.exaggeration.toFixed(1)}×`
+              } (display setting)`}
               value={v.exaggeration}
               min={EXAGGERATION_MIN}
               max={EXAGGERATION_MAX}
               step={0.5}
+              disabled={groundOn}
               onChange={v.setExaggeration}
-              note="Visual only. Right-drag (or two fingers) to tilt and turn."
+              note={
+                groundOn
+                  ? 'The ground view uses true scale; it puts your setting back when you leave.'
+                  : 'Relative to true scale (heights in proportion to distances). Visual only. Right-drag (or two fingers) to tilt and turn.'
+              }
             />
             <div className="grid grid-cols-2 gap-2">
-              <ChoiceButton on={false} onClick={() => flyTo3d('delta')} className="text-xs">
+              <ChoiceButton on={false} disabled={groundOn} onClick={() => flyTo3d('delta')} className="text-xs">
                 Fly to delta
               </ChoiceButton>
-              <ChoiceButton on={false} onClick={() => flyTo3d('crater')} className="text-xs">
+              <ChoiceButton on={false} disabled={groundOn} onClick={() => flyTo3d('crater')} className="text-xs">
                 Whole crater
               </ChoiceButton>
             </div>

@@ -45,7 +45,10 @@ function Card({ id }: { id: string }) {
   const base = stations[0]
   const inWalk = new Set(included ?? defaultStops(stations)).has(id)
   const walkHome = useWalkHome(station?.lat ?? NaN, station?.lon ?? NaN)
+  const standHere = useInteraction((s) => s.standHere)
+  const groundAvailable = useInteraction((s) => s.groundAvailable)
   if (!station || !base) return null
+  const isBase = station.id === base.id
 
   const here = { lat: station.lat, lon: station.lon }
   const from = { lat: base.lat, lon: base.lon }
@@ -70,20 +73,36 @@ function Card({ id }: { id: string }) {
         </button>
       </div>
       <p>{station.task}</p>
+      {/* Base is always in the walk. */}
+      {!isBase && (
+        <button
+          type="button"
+          onClick={() => toggle(stations, station.id)}
+          className={`w-full rounded-[3px] border px-3 py-1.5 text-sm font-medium ${
+            inWalk ? 'border-line bg-panel-2 text-fg hover:border-fg-muted' : 'border-brand bg-brand text-bg'
+          }`}
+        >
+          {inWalk ? 'Remove from the walk' : 'Add to the walk'}
+        </button>
+      )}
       <button
         type="button"
-        onClick={() => toggle(stations, station.id)}
-        className={`w-full rounded-[3px] border px-3 py-1.5 text-sm font-medium ${
-          inWalk ? 'border-line bg-panel-2 text-fg hover:border-fg-muted' : 'border-brand bg-brand text-bg'
-        }`}
+        disabled={!groundAvailable}
+        onClick={() => standHere(here, station.id)}
+        title={groundAvailable ? 'Simulated ground view from orbital data' : 'Needs the 3D height tiles and the height grid'}
+        className="w-full rounded-[3px] border border-route px-3 py-1.5 text-sm font-medium text-route hover:bg-route/10 disabled:opacity-40"
       >
-        {inWalk ? 'Remove from the walk' : 'Add to the walk'}
+        Stand here (simulated view)
       </button>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-        <dt className="text-fg-muted">Range from base</dt>
-        <dd className="font-mono">{fmtDistance(distanceM(from, here))}</dd>
-        <dt className="text-fg-muted">Bearing from base</dt>
-        <dd className="font-mono">{fmtBearing(bearingDeg(from, here))}</dd>
+        {!isBase && (
+          <>
+            <dt className="text-fg-muted">Range from base</dt>
+            <dd className="font-mono">{fmtDistance(distanceM(from, here))}</dd>
+            <dt className="text-fg-muted">Bearing from base</dt>
+            <dd className="font-mono">{fmtBearing(bearingDeg(from, here))}</dd>
+          </>
+        )}
         <dt className="text-fg-muted">Walk home</dt>
         <dd className="font-mono">{walkHomeText}</dd>
         <dt className="text-fg-muted">Time at station</dt>

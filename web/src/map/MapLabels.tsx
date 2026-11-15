@@ -112,7 +112,7 @@ export default function MapLabels({ mapRef, containerRef, ready, items, avoidLin
   const byId = new Map(items.map((i) => [i.id, i]))
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
       <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
         {placed.map(
           (p) =>

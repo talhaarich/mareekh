@@ -10,3 +10,24 @@ export const CAMERA_PRESETS: Record<CameraPreset, { center: [number, number]; zo
   // The whole crater with its rim, from the south-east.
   crater: { center: [77.55, 18.4], zoom: 10.4, pitch: 58, bearing: -25 },
 }
+
+/**
+ * Ground view ("Stand here"). Display settings, not physics: they frame the simulated view and are not
+ * measurements of anything. Heights and distances are Mars metres (converted for MapLibre in groundScale.ts).
+ */
+/** Eye height above the ground at the start: high enough to see past the 20 m height cells nearby. */
+export const GROUND_EYE_HEIGHT_M = 40
+/** The mouse wheel changes the eye height within this range. */
+export const GROUND_EYE_MIN_M = 10
+export const GROUND_EYE_MAX_M = 200
+/** Pitch on arrival: just below the horizon (90 is level). */
+export const GROUND_PITCH_DEG = 84
+/** Looking around is kept between nearly straight down and well above the horizon. */
+export const GROUND_PITCH_MIN_DEG = 20
+export const GROUND_PITCH_MAX_DEG = 135
+/** Degrees the view turns per pixel dragged. */
+export const GROUND_DRAG_DEG_PER_PX = 0.2
+/** The flight in: duration, pitch while crossing, and the height kept above the highest ground on the way. */
+export const GROUND_FLIGHT_MS = 3000
+export const GROUND_CRUISE_PITCH_DEG = 70
+export const GROUND_FLIGHT_CLEARANCE_M = 60

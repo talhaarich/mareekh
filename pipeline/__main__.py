@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from pipeline.steps import (
     load_dem,
     package_grids,
     slope_deg,
+    terrain_tiles,
     write_manifest,
 )
 from pipeline.steps.overlays import classes_present
@@ -93,9 +95,12 @@ def build(manifest_path: str) -> None:
             )
             layer_meta["legend"] = _layer_legend(layer, src, bounds, dem)
         elif layer["type"] == "terrain":
-            if not (out_dir / layer["url"].split("{")[0]).exists():
-                print(f"WARNING: skipping layer '{layer['id']}': no terrain tiles built", file=sys.stderr)
-                continue
+            # Tiles go in the folder holding the layer's url (a TileJSON, e.g. terrain/tiles.json).
+            tiles_dir = (out_dir / layer["url"]).parent
+            shutil.rmtree(tiles_dir, ignore_errors=True)  # no stale tiles from an earlier box or zoom range
+            opts = layer.get("options", {})
+            tj = terrain_tiles(dem, tuple(meta["bounds"]), str(tiles_dir), int(opts["minzoom"]), int(opts["maxzoom"]))
+            print(f"terrain: {tj['tile_count']} tiles, zoom {tj['minzoom']}-{tj['maxzoom']}")
             layer_meta["legend"] = layer.get("legend", [])
 
         layer_results.append(layer_meta)

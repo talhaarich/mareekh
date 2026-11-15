@@ -18,6 +18,10 @@ export interface ViewState {
   showWind: boolean
   showLabels: boolean
   mode: Mode
+  /** 3D terrain on (MapLibre terrain from the manifest's terrain layer). */
+  terrain3d: boolean
+  /** Vertical exaggeration of the 3D terrain, a display choice. */
+  exaggeration: number
 
   setBaseView: (id: string) => void
   /** Returns false (and changes nothing) if it would put two colour fills on at once. */
@@ -28,7 +32,15 @@ export interface ViewState {
   setShowWind: (on: boolean) => void
   setShowLabels: (on: boolean) => void
   setMode: (mode: Mode) => void
+  setTerrain3d: (on: boolean) => void
+  /** Clamped to EXAGGERATION_MIN..EXAGGERATION_MAX. */
+  setExaggeration: (x: number) => void
 }
+
+/** Exaggeration range for the 3D view. Jezero is fairly flat, so the default lifts it. Display choices. */
+export const EXAGGERATION_MIN = 1
+export const EXAGGERATION_MAX = 3
+export const EXAGGERATION_DEFAULT = 2
 
 /**
  * Two colour fills must never be on together: the walk-time lines and a data overlay.
@@ -46,6 +58,8 @@ export const useView = create<ViewState>()((set, get) => ({
   showWind: false,
   showLabels: true,
   mode: 'plan',
+  terrain3d: false,
+  exaggeration: EXAGGERATION_DEFAULT,
 
   setBaseView: (id) => set({ baseView: id }),
   setReach: (reach) => {
@@ -62,4 +76,6 @@ export const useView = create<ViewState>()((set, get) => ({
   setShowWind: (on) => set({ showWind: on }),
   setShowLabels: (on) => set({ showLabels: on }),
   setMode: (mode) => set({ mode }),
+  setTerrain3d: (on) => set({ terrain3d: on }),
+  setExaggeration: (x) => set({ exaggeration: Math.min(EXAGGERATION_MAX, Math.max(EXAGGERATION_MIN, x)) }),
 }))

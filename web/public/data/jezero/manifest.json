@@ -191,6 +191,17 @@
       ],
       "credit": "Parente, Saranathan, Itoh et al. (2021), CRISM mineral map, Zenodo 5575824, CC BY 4.0",
       "caveat": "Partial coverage. A class map of the closest spectral match, not a measurement at each point. Bold colours: very high confidence; dark colours: high or medium."
+    },
+    {
+      "id": "terrain",
+      "name": "3D terrain",
+      "group": "view",
+      "type": "terrain",
+      "url": "terrain/tiles.json",
+      "default": false,
+      "legend": [],
+      "credit": "Derived from the CTX height map (NASA/JPL/MSSS; mosaic by USGS Astrogeology)",
+      "caveat": "Visual only: heights are exaggerated. Slope and routes come from the height grid, not the 3D view."
     }
   ]
 }

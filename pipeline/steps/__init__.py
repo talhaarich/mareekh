@@ -6,6 +6,7 @@ from pipeline.steps.clip import clip_dem, load_dem
 from pipeline.steps.derive import slope_deg
 from pipeline.steps.overlays import export_png
 from pipeline.steps.package_grids import package_grids
+from pipeline.steps.terrain_tiles import terrain_tiles
 from pipeline.steps.write_manifest import write_manifest
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "slope_deg",
     "export_png",
     "package_grids",
+    "terrain_tiles",
     "write_manifest",
 ]

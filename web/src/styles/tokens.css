@@ -27,6 +27,11 @@
   --color-pin-sample: #60a5fa;
   --color-pin-feature: #c4b5fd;
 
+  /* 3D sky: dark mission-control sky with a faint dusty horizon */
+  --color-sky: #05070c;
+  --color-horizon: #3a2a20;
+  --color-fog: #0b0e14;
+
   /* Printed route card: plain ink on paper, so it reads on any printer */
   --color-paper: #ffffff;
   --color-ink: #000000;

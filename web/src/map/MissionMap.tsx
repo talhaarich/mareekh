@@ -23,6 +23,10 @@ import { maplibregl } from './maplibreSetup'
 import { readToken } from './tokens'
 import { useLayerAvailability } from './useLayerAvailability'
 
+/** Style anchors: a layer added with `beforeId` set to one of these draws just below it. */
+export const ANCHOR_OVERLAYS = 'mm-anchor-overlays'
+export const ANCHOR_DATA = 'mm-anchor-data'
+
 /** Credit, caveat and colour key for one layer. Every layer shown must say where it came from. */
 function KeyBlock({ title, layer, missing }: { title: string; layer: ImageLayer; missing: boolean }) {
   return (
@@ -145,6 +149,10 @@ export default function MissionMap() {
       sources: {},
       layers: [
         { id: 'background', type: 'background', paint: { 'background-color': readToken('--color-bg') } },
+        // Hidden anchors that fix the drawing order, whatever order layers mount in (pictures mount
+        // late, after their availability check): views < overlays < everything else (route, ring, ...).
+        { id: ANCHOR_OVERLAYS, type: 'background', layout: { visibility: 'none' } },
+        { id: ANCHOR_DATA, type: 'background', layout: { visibility: 'none' } },
       ],
     }),
     [],
@@ -227,14 +235,16 @@ export default function MissionMap() {
         onLoad={() => setMapReady(true)}
         style={{ width: '100%', height: '100%' }}
       >
-        {/* Views first, then overlays, then the route, so each draws above the last. All stay
-            mounted and are shown or hidden, so switching view never re-downloads a picture. */}
+        {/* Views sit below ANCHOR_OVERLAYS, overlays below ANCHOR_DATA, and the route and the rest
+            on top, whatever order they mount in. All stay mounted and are shown or hidden, so
+            switching view never re-downloads a picture. */}
         {views
           .filter((v) => available[v.id] === true)
           .map((v) => (
             <Source key={v.id} id={`mm-src-${v.id}`} type="image" url={dataUrl(v.url)} coordinates={v.coordinates}>
               <Layer
                 id={`mm-view-${v.id}`}
+                beforeId={ANCHOR_OVERLAYS}
                 type="raster"
                 layout={{ visibility: v.id === activeView?.id ? 'visible' : 'none' }}
                 paint={{ 'raster-fade-duration': 0 }}
@@ -247,6 +257,7 @@ export default function MissionMap() {
             <Source key={o.id} id={`mm-src-${o.id}`} type="image" url={dataUrl(o.url)} coordinates={o.coordinates}>
               <Layer
                 id={`mm-overlay-${o.id}`}
+                beforeId={ANCHOR_DATA}
                 type="raster"
                 layout={{ visibility: o.id === activeOverlay?.id ? 'visible' : 'none' }}
                 paint={{ 'raster-opacity': overlayStrength, 'raster-fade-duration': 0 }}

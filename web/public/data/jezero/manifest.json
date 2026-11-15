@@ -1,6 +1,6 @@
 {
   "region": {
-    "name": "Jezero Crater, western delta",
+    "name": "Jezero Crater, crater floor and western delta front",
     "bounds": [
       18.41,
       77.38,
@@ -21,26 +21,26 @@
       "url": "overlays/satellite.png",
       "coordinates": [
         [
-          77.38,
-          18.512
+          77.37995025690012,
+          18.512057203275983
         ],
         [
-          77.522,
-          18.512
+          77.52203351360038,
+          18.512057203275983
         ],
         [
-          77.522,
-          18.41
+          77.52203351360038,
+          18.409943848867513
         ],
         [
-          77.38,
-          18.41
+          77.37995025690012,
+          18.409943848867513
         ]
       ],
+      "default": true,
       "legend": [],
-      "credit": "NASA/JPL-Caltech/MSSS/USGS (CTX mosaic)",
-      "caveat": "5 m per pixel. Rocks are not visible.",
-      "default": true
+      "credit": "NASA/JPL/MSSS (MRO CTX); mosaic by USGS Astrogeology / JPL",
+      "caveat": "5 m per pixel. Rocks are not visible."
     },
     {
       "id": "relief",
@@ -50,25 +50,26 @@
       "url": "overlays/relief.png",
       "coordinates": [
         [
-          77.38,
-          18.512
+          77.37984521503391,
+          18.512114710809875
         ],
         [
-          77.522,
-          18.512
+          77.5221366210149,
+          18.512114710809875
         ],
         [
-          77.522,
-          18.41
+          77.5221366210149,
+          18.409878845369697
         ],
         [
-          77.38,
-          18.41
+          77.37984521503391,
+          18.409878845369697
         ]
       ],
+      "default": false,
       "legend": [],
-      "credit": "Derived from the CTX height map",
-      "caveat": "Shading only."
+      "credit": "Shading derived from the CTX height map (NASA/JPL/MSSS; mosaic by USGS Astrogeology)",
+      "caveat": "Shading only, light from the north-west."
     },
     {
       "id": "topo",
@@ -78,25 +79,26 @@
       "url": "overlays/topo.png",
       "coordinates": [
         [
-          77.38,
-          18.512
+          77.37984521503391,
+          18.512114710809875
         ],
         [
-          77.522,
-          18.512
+          77.5221366210149,
+          18.512114710809875
         ],
         [
-          77.522,
-          18.41
+          77.5221366210149,
+          18.409878845369697
         ],
         [
-          77.38,
-          18.41
+          77.37984521503391,
+          18.409878845369697
         ]
       ],
+      "default": false,
       "legend": [],
-      "credit": "Derived from the CTX height map",
-      "caveat": "Contours every 10 m from 20 m data."
+      "credit": "Contours derived from the CTX height map (NASA/JPL/MSSS; mosaic by USGS Astrogeology)",
+      "caveat": "Contours every 10 m, darker every 50 m, from 20 m data."
     },
     {
       "id": "elevation",
@@ -106,34 +108,35 @@
       "url": "overlays/elevation.png",
       "coordinates": [
         [
-          77.38,
-          18.512
+          77.37984521503391,
+          18.512114710809875
         ],
         [
-          77.522,
-          18.512
+          77.5221366210149,
+          18.512114710809875
         ],
         [
-          77.522,
-          18.41
+          77.5221366210149,
+          18.409878845369697
         ],
         [
-          77.38,
-          18.41
+          77.37984521503391,
+          18.409878845369697
         ]
       ],
+      "default": false,
       "legend": [
         {
           "color": "#213899",
-          "label": "Low"
+          "label": "-2650 m (lowest)"
         },
         {
           "color": "#d13829",
-          "label": "High"
+          "label": "-2410 m (highest)"
         }
       ],
-      "credit": "Derived from the CTX height map",
-      "caveat": ""
+      "credit": "CTX height map (NASA/JPL/MSSS; mosaic by USGS Astrogeology)",
+      "caveat": "Heights relative to the Mars areoid (MOLA), so they are negative here."
     },
     {
       "id": "minerals",
@@ -143,72 +146,51 @@
       "url": "overlays/minerals.png",
       "coordinates": [
         [
-          77.38,
-          18.512
+          77.37984104932072,
+          18.5120420322441
         ],
         [
-          77.522,
-          18.512
+          77.52256636642038,
+          18.5120420322441
         ],
         [
-          77.522,
-          18.41
+          77.52256636642038,
+          18.409401272287326
         ],
         [
-          77.38,
-          18.41
+          77.37984104932072,
+          18.409401272287326
         ]
       ],
+      "default": false,
       "legend": [
         {
-          "color": "#28c8aa",
-          "label": "Example class A"
+          "color": "#ff0000",
+          "label": "Olivine"
         },
         {
-          "color": "#e150be",
-          "label": "Example class B"
+          "color": "#00ff00",
+          "label": "Mg-carbonate"
+        },
+        {
+          "color": "#00ffff",
+          "label": "Fe/Mg-smectite"
+        },
+        {
+          "color": "#ff8072",
+          "label": "Olivine + smectite"
+        },
+        {
+          "color": "#ff8000",
+          "label": "High-Ca pyroxene"
+        },
+        {
+          "color": "#8b4513",
+          "label": "Kaolinite"
         }
       ],
-      "credit": "CRISM mineral map (Zenodo record 5575824)",
-      "caveat": "Partial coverage. A class map, not a measurement at each point."
-    },
-    {
-      "id": "geology",
-      "name": "Rock units",
-      "group": "overlay",
-      "type": "image",
-      "url": "overlays/geology.png",
-      "coordinates": [
-        [
-          77.38,
-          18.512
-        ],
-        [
-          77.522,
-          18.512
-        ],
-        [
-          77.522,
-          18.41
-        ],
-        [
-          77.38,
-          18.41
-        ]
-      ],
-      "legend": [],
-      "credit": "USGS SIM 3464",
-      "caveat": "Mapped at 1:75,000."
-    },
-    {
-      "id": "terrain",
-      "name": "3D terrain",
-      "group": "view",
-      "type": "terrain",
-      "url": "terrain/{z}/{x}/{y}.png",
-      "legend": [],
-      "credit": "Derived from the CTX height map",
-      "caveat": "Should item."
+      "credit": "Parente, Saranathan, Itoh et al. (2021), CRISM mineral map, Zenodo 5575824, CC BY 4.0",
+      "caveat": "Partial coverage. A class map of the closest spectral match, not a measurement at each point. Bold colours: very high confidence; dark colours: high or medium."
     }
   ]
 }

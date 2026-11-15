@@ -1,6 +1,6 @@
 import { useData, type Assumption } from '../state/data'
 import { usePlan } from '../state/plan'
-import { Fact, SectionTitle } from './Fact'
+import { Fact } from './Fact'
 import { DASH, fmtAssumption, fmtDose, fmtPressureMbar, fmtTau, fmtTempC } from './format'
 
 function findAssumption(assumptions: Assumption[], key: string): Assumption | undefined {
@@ -25,7 +25,6 @@ export default function SafetyPanel() {
   if (!loaded || !conditions) {
     return (
       <section aria-label="Safety" className="space-y-2">
-        <SectionTitle>Safety</SectionTitle>
         <p className="text-sm text-fg-muted">Loading conditions…</p>
       </section>
     )
@@ -37,8 +36,6 @@ export default function SafetyPanel() {
 
   return (
     <section aria-label="Safety" className="space-y-4">
-      <SectionTitle>Safety</SectionTitle>
-
       <div className="space-y-2">
         <h3 className="text-xs font-semibold text-fg">Radiation</h3>
         <Fact
@@ -55,16 +52,18 @@ export default function SafetyPanel() {
 
       <div className="space-y-2">
         <h3 className="text-xs font-semibold text-fg">Dust</h3>
-        <Fact label="Optical depth (no unit)" value={fmtTau(conditions.tau)} source={conditions.source} />
+        <Fact label="Optical depth (no unit)" value={fmtTau(conditions.tau)} source={`Conditions file, sol ${conditions.sol}: source below`} />
         <Fact label="Normal reference" value={tauNormal ? fmtTau(tauNormal.value) : DASH} source={sourceOf(tauNormal)} />
         <Fact label="Storm reference" value={tauStorm ? fmtTau(tauStorm.value) : DASH} source={sourceOf(tauStorm)} />
       </div>
 
       <div className="space-y-2">
         <h3 className="text-xs font-semibold text-fg">Weather, sol {conditions.sol}</h3>
-        <Fact label="Air temperature" value={fmtTempC(conditions.airTempK)} source={conditions.source} />
-        <Fact label="Air pressure" value={fmtPressureMbar(conditions.pressurePa)} source={conditions.source} />
-        <p className="text-[10px] leading-tight text-fg-muted">{conditions.caveat}</p>
+        <Fact label="Air temperature" value={fmtTempC(conditions.airTempK)} source={`Conditions file, sol ${conditions.sol}: source below`} />
+        <Fact label="Air pressure" value={fmtPressureMbar(conditions.pressurePa)} source={`Conditions file, sol ${conditions.sol}: source below`} />
+        <p className="text-[10px] leading-tight text-fg-muted">
+          Source: {conditions.source}. {conditions.caveat}
+        </p>
       </div>
     </section>
   )

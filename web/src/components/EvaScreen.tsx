@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { bearingDeg, distanceM, nearestStationId, walkHomeS } from '../lib/helpers'
+import { useInteraction } from '../map/interaction'
 import { useData } from '../state/data'
 import { usePins } from '../state/pins'
 import { usePlan } from '../state/plan'
@@ -54,6 +55,16 @@ export default function EvaScreen() {
   const next = stations.find((s) => s.id === nextId) ?? null
   const fixId = fixPrompt ?? (known ? nearestStationId(stations, estimate) : null)
   const status = result ? STATUS_STYLE[result.status] : null
+  const elapsedS = usePosition((s) => s.elapsedS)
+  const playing = useInteraction((s) => s.playing)
+  const playSpeed = useInteraction((s) => s.playSpeed)
+  const setPlaying = useInteraction((s) => s.setPlaying)
+  const setPlaySpeed = useInteraction((s) => s.setPlaySpeed)
+  const totalS = result?.totalTimeS ?? NaN
+  const canWalk = result !== null && Number.isFinite(totalS)
+  // The timeline's end can differ from totalTimeS by a float hair, so "finished" is the position store's
+  // own test: no next stop left, and the walk has started.
+  const finished = canWalk && elapsedS > 0 && nextId === null
 
   const wayHome = Number.isNaN(wayHomeS) ? DASH : Number.isFinite(wayHomeS) ? fmtDuration(wayHomeS) : 'no path'
 
@@ -76,11 +87,51 @@ export default function EvaScreen() {
         </button>
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 px-4 py-4 sm:gap-6">
+      {/* The walk clock. Without it EVA mode only moved if the rehearsal was already playing. */}
+      <div className="flex items-center gap-2 border-b border-line px-4 py-2">
+        <button
+          type="button"
+          disabled={!canWalk}
+          onClick={() => {
+            if (finished) usePosition.getState().reset() // walk again from base
+            setPlaying(finished ? true : !playing)
+          }}
+          className={`min-h-14 min-w-24 rounded-md border-2 px-4 text-lg font-bold disabled:opacity-40 ${
+            playing ? 'border-fg text-fg' : 'border-brand bg-brand text-bg'
+          }`}
+        >
+          {finished ? 'Restart' : playing ? 'Pause' : 'Start'}
+        </button>
+        <div role="group" aria-label="Walk speed" className="flex">
+          {[1, 10, 60].map((s, i) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={playSpeed === s}
+              onClick={() => setPlaySpeed(s)}
+              className={`min-h-14 border px-2.5 font-mono text-base font-bold ${i > 0 ? '-ml-px' : ''} ${
+                i === 0 ? 'rounded-l-md' : i === 2 ? 'rounded-r-md' : ''
+              } ${playSpeed === s ? 'border-fg bg-fg text-bg' : 'border-line text-fg'}`}
+            >
+              {s}×
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto min-w-0 text-right">
+          <div className="font-mono text-base font-bold whitespace-nowrap">{canWalk ? fmtDuration(elapsedS) : DASH}</div>
+          <div className="text-[11px] leading-tight text-fg-muted">
+            {!canWalk ? 'No complete route' : `of ${fmtDuration(totalS)}`}
+            <br />
+            {finished ? 'Walk finished' : 'Simulated clock'}
+          </div>
+        </div>
+      </div>
+
+      <main className="flex flex-1 flex-col gap-3 px-4 py-3 sm:gap-6 sm:py-4">
         <Block label="Next stop" source="Straight line on the Mars sphere from the simulated position">
           {next ? (
             <>
-              <div className="text-2xl font-bold leading-tight sm:text-3xl">
+              <div className="text-xl font-bold leading-tight sm:text-3xl">
                 {next.id} · {next.name}
               </div>
               <div className="font-mono text-3xl font-bold whitespace-nowrap sm:text-4xl">
@@ -93,7 +144,10 @@ export default function EvaScreen() {
         </Block>
 
         <div className="grid grid-cols-2 gap-4">
-          <Block label="Time left" source="Time limit minus simulated elapsed time">
+          <Block
+            label="Time left"
+            source={params ? `${fmtDuration(params.timeLimitS)} limit minus the walk clock` : 'Time limit minus the walk clock'}
+          >
             <div className="font-mono text-2xl font-bold whitespace-nowrap sm:text-3xl">{fmtSignedDuration(timeLeftS)}</div>
           </Block>
           <Block label="Way home" source="Route model, from the simulated position">

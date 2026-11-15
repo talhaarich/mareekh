@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react'
 import AppShell from './components/AppShell'
-import Destinations from './components/Destinations'
 import EvaScreen from './components/EvaScreen'
 import FieldNotes from './components/FieldNotes'
 import LayerControls from './components/LayerControls'
-import LimitsPanel from './components/LimitsPanel'
-import PlanPanel from './components/PlanPanel'
-import RehearsalPanel from './components/RehearsalPanel'
+import RightPanel from './components/RightPanel'
 import RouteCard from './components/RouteCard'
-import SafetyPanel from './components/SafetyPanel'
 import { usePlanner } from './components/planParams'
 import { useWalkClock } from './components/walkClock'
 import MissionMap from './map/MissionMap'
@@ -48,15 +44,7 @@ export default function App() {
             <FieldNotes />
           </div>
         }
-        right={
-          <div className="space-y-8">
-            <PlanPanel />
-            <Destinations />
-            <RehearsalPanel />
-            <SafetyPanel />
-            <LimitsPanel />
-          </div>
-        }
+        right={<RightPanel />}
         regionName={manifest?.region.name}
         notice={loadError ? `Data could not be loaded: ${loadError}` : undefined}
       >

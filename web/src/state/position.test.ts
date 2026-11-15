@@ -116,6 +116,11 @@ describe('next stop and time left', () => {
     expect(next()).toBeNull() // finished
   })
 
+  it('counts the walk as finished a float hair before the timeline end', () => {
+    usePosition.getState().simulateTo(2 * legS + 600 - 1e-6)
+    expect(next()).toBeNull()
+  })
+
   it('is null with no plan', () => {
     usePlan.setState({ result: null })
     expect(next()).toBeNull()

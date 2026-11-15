@@ -100,18 +100,56 @@ export default function LayerControls({ part }: { part?: LayerPart } = {}) {
 
   return (
     <div className="space-y-7">
-      {show('view') && (
-        <Group title="Map view">
-          <div className="grid grid-cols-2 gap-2">
-            {views.map((l) => (
-              <ChoiceButton
-                key={l.id}
-                on={activeView?.id === l.id}
-                onClick={() => v.setBaseView(l.id)}
-                title={missing(l.id) ? 'Not built yet' : undefined}
-              >
-                {l.name}
-                {missing(l.id) && <span className="ml-1 text-[10px] opacity-70">(not built)</span>}
+      <Group title="Map view">
+        <div className="grid grid-cols-2 gap-2">
+          {views.map((l) => (
+            <ChoiceButton
+              key={l.id}
+              on={activeView?.id === l.id}
+              onClick={() => v.setBaseView(l.id)}
+              title={missing(l.id) ? 'Not built yet' : undefined}
+            >
+              {l.name}
+              {missing(l.id) && <span className="ml-1 text-[10px] opacity-70">(not built)</span>}
+            </ChoiceButton>
+          ))}
+        </div>
+        <Segmented
+          label="2D or 3D"
+          value={v.terrain3d ? '3d' : '2d'}
+          onChange={(d) => v.setTerrain3d(d === '3d')}
+          options={[
+            { id: '2d', label: '2D', disabled: groundOn, title: groundOn ? 'Leave the ground view first' : undefined },
+            { id: '3d', label: '3D', disabled: !dem || groundOn, title: !dem ? 'No height tiles built yet' : groundOn ? 'Leave the ground view first' : undefined },
+          ]}
+        />
+        <p className="text-[10px] leading-tight text-fg-muted">
+          Turn and tilt: right-drag, Ctrl + drag, two fingers, or the ↺ ↻ ∠ buttons on the map.
+        </p>
+        {v.terrain3d && dem && (
+          <>
+            <Slider
+              label={`Vertical exaggeration: ${
+                trueScale ? exaggerationLabel(v.exaggeration, trueScale) : `${v.exaggeration.toFixed(1)}×`
+              } (display setting)`}
+              value={v.exaggeration}
+              min={EXAGGERATION_MIN}
+              max={EXAGGERATION_MAX}
+              step={0.5}
+              disabled={groundOn}
+              onChange={v.setExaggeration}
+              note={
+                groundOn
+                  ? 'The ground view uses true scale; it puts your setting back when you leave.'
+                  : 'Relative to true scale (heights in proportion to distances). Visual only.'
+              }
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <ChoiceButton on={false} disabled={groundOn} onClick={() => flyTo3d('delta')} className="text-xs">
+                Fly to delta
+              </ChoiceButton>
+              <ChoiceButton on={false} disabled={groundOn} onClick={() => flyTo3d('crater')} className="text-xs">
+                Whole crater
               </ChoiceButton>
             ))}
           </div>

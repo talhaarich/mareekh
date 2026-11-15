@@ -41,20 +41,21 @@ def write_manifest(
         if "caveat" not in layer:
             raise ValueError(f"layer '{layer.get('id', '?')}' is missing required 'caveat' field")
 
-        layers.append(
-            {
-                "id": layer["id"],
-                "name": layer["name"],
-                "group": layer["group"],
-                "type": layer["type"],
-                "url": layer["url"],
-                "coordinates": layer.get("coordinates"),
-                "default": layer.get("default", False),
-                "legend": layer.get("legend", []),
-                "credit": layer["credit"],
-                "caveat": layer["caveat"],
-            }
-        )
+        entry = {
+            "id": layer["id"],
+            "name": layer["name"],
+            "group": layer["group"],
+            "type": layer["type"],
+            "url": layer["url"],
+            "coordinates": layer.get("coordinates"),
+            "default": layer.get("default", False),
+            "legend": layer.get("legend", []),
+            "credit": layer["credit"],
+            "caveat": layer["caveat"],
+        }
+        if entry["coordinates"] is None:
+            del entry["coordinates"]  # CONTRACTS.md: omit for terrain
+        layers.append(entry)
 
     manifest = {"region": region, "layers": layers}
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)

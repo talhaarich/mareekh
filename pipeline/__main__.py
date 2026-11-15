@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import json
-import shutil
 import sys
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 from pipeline.steps import (
@@ -18,67 +17,92 @@ from pipeline.steps import (
     slope_deg,
     write_manifest,
 )
+from pipeline.steps.overlays import classes_present
+
+# No-data value written into dem.bin and slope.bin (the value used in docs/specs examples).
+GRID_NODATA = -9999.0
+
+
+def _region(config: dict) -> dict:
+    """Region block for manifest.json: an explicit ``region``, else the walk box keys (name, bounds, base)."""
+    if "region" in config:
+        return config["region"]
+    return {"name": config["name"], "bounds": config["bounds"], "base": config["base"]}
+
+
+def _layer_legend(layer: dict, src: str, bounds: tuple, dem: np.ndarray) -> list:
+    """Legend for a layer: built from the data where the layer says how, else the YAML legend."""
+    render = layer.get("render", "grey")
+    if render == "elevation":
+        ramp = layer["options"]["ramp"]
+        lo, hi = float(np.nanmin(dem)), float(np.nanmax(dem))
+        return [{"color": ramp[0], "label": f"{lo:.0f} m (lowest)"}, {"color": ramp[-1], "label": f"{hi:.0f} m (highest)"}]
+    if render == "rgb" and "classes" in layer:
+        return classes_present(src, bounds, layer["classes"])
+    return layer.get("legend", [])
 
 
 def build(manifest_path: str) -> None:
-    """Build all pipeline files from the given manifest configuration."""
-    manifest_file = Path(manifest_path)
-    config = yaml.safe_load(manifest_file.read_text())
+    """Build all pipeline files from the given manifest configuration.
+
+    Writes grid.json, dem.bin, slope.bin, overlays/*.png and manifest.json into ``out_dir``.
+    The clipped height file goes into ``build_dir`` (default ``build/pipeline``), never into the
+    web folder. A layer whose source file is missing is left out of the manifest, with a warning.
+    """
+    config = yaml.safe_load(Path(manifest_path).read_text(encoding="utf-8"))
 
     out_dir = Path(config["out_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
+    build_dir = Path(config.get("build_dir", "build/pipeline"))
+    build_dir.mkdir(parents=True, exist_ok=True)
+    bounds = tuple(config.get("clip_bounds") or config["bounds"])
 
-    # Need assumptions.json in out_dir for package_grids
-    # Look for it in examples/data/jezero if not already in out_dir
-    src_assumptions = Path("examples/data/jezero/assumptions.json")
-    if not (out_dir / "assumptions.json").exists() and src_assumptions.exists():
-        shutil.copy(src_assumptions, out_dir / "assumptions.json")
-
-    # Step 1: Clip
-    dem_tif = out_dir / "clipped.tif"
-    meta = clip_dem(config["dem_src"], tuple(config["clip_bounds"]), str(dem_tif))
+    # Step 1: Clip (whole cells of the height file's own 20 m grid)
+    dem_tif = build_dir / "clipped.tif"
+    meta = clip_dem(config["dem_src"], bounds, str(dem_tif))
 
     # Step 2: Derive
     dem = load_dem(str(dem_tif))
     slope = slope_deg(dem, meta["res_m"])
 
     # Step 3: Package
-    package_grids(dem, slope, meta, str(out_dir))
+    package_grids(dem, slope, {**meta, "nodata": GRID_NODATA}, str(out_dir))
+    print(f"grid: {meta['width']} x {meta['height']} cells at {meta['res_m']} m, bounds {meta['bounds']}")
 
     # Step 4: Overlays
     layer_results = []
-    overlays_dir = out_dir / "overlays"
-    overlays_dir.mkdir(exist_ok=True)
-
     for layer in config.get("layers", []):
-        layer_meta = {
-            "id": layer["id"],
-            "name": layer["name"],
-            "group": layer["group"],
-            "type": layer["type"],
-            "url": layer["url"],
-            "credit": layer["credit"],
-            "caveat": layer["caveat"],
-        }
+        layer_meta = {k: layer[k] for k in ("id", "name", "group", "type", "url", "credit", "caveat")}
         if "default" in layer:
             layer_meta["default"] = layer["default"]
-        if "legend" in layer:
-            layer_meta["legend"] = layer["legend"]
 
         if layer["type"] == "image":
-            png_out = out_dir / layer["url"]
-            coords = export_png(
-                layer["src"],
-                tuple(config["clip_bounds"]),
-                str(png_out),
+            src = layer.get("src")
+            if not src or not Path(src).exists():
+                print(f"WARNING: skipping layer '{layer['id']}': source file {src!r} not found", file=sys.stderr)
+                continue
+            layer_meta["coordinates"] = export_png(
+                src,
+                bounds,
+                str(out_dir / layer["url"]),
+                max_px=layer.get("max_px", 4096),
                 nearest=layer.get("nearest", False),
+                render=layer.get("render", "grey"),
+                nodata=layer.get("nodata"),
+                options={**layer.get("options", {}), **({"classes": layer["classes"]} if "classes" in layer else {})},
             )
-            layer_meta["coordinates"] = coords
+            layer_meta["legend"] = _layer_legend(layer, src, bounds, dem)
+        elif layer["type"] == "terrain":
+            if not (out_dir / layer["url"].split("{")[0]).exists():
+                print(f"WARNING: skipping layer '{layer['id']}': no terrain tiles built", file=sys.stderr)
+                continue
+            layer_meta["legend"] = layer.get("legend", [])
 
         layer_results.append(layer_meta)
+        print(f"layer: {layer['id']}")
 
     # Step 5: Manifest
-    write_manifest(config, layer_results, str(out_dir / "manifest.json"))
+    write_manifest({**config, "region": _region(config)}, layer_results, str(out_dir / "manifest.json"))
 
 
 def main() -> None:

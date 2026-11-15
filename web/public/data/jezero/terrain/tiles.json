@@ -12,5 +12,9 @@
     18.80026464178648
   ],
   "encoding": "mapbox",
-  "tile_count": 145
+  "tile_count": 145,
+  "height_range_m": [
+    -2924.6,
+    -1378.3
+  ]
 }

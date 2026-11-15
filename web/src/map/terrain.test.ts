@@ -20,7 +20,9 @@ describe('terrain source', () => {
       maxzoom: 13,
       bounds: [77.38, 18.41, 77.52, 18.51],
       encoding: 'mapbox',
+      heightRangeM: null,
     })
+    expect(parseTileJson({ ...tj, height_range_m: [-2925, -1378] }, '/d/terrain/tiles.json', 'http://o')?.heightRangeM).toEqual([-2925, -1378])
   })
 
   it('is null for a broken or missing TileJSON (e.g. a dev server answering with index.html)', () => {

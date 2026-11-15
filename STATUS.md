@@ -12,7 +12,7 @@ Tests: web 154, Python 78 (+1 skipped).
 ## Must (CONTEXT.md "Scope")
 | Item | Status | Evidence / gap |
 | --- | --- | --- |
-| Stations and science goal | DONE | `stations.json` from real rover waypoints; task text per station |
+| Stations and science goal | DONE | Five stations from real rover waypoints: depot, delta base, delta top, Rochette (first cores), Roubion (first coring attempt). GO, 4 h 26 min |
 | Route with time / energy / turn-back | DONE | Real CTX terrain: GO, 3 h 13 min, 5.90 km |
 | Radiation and dust panel | DONE | `SafetyPanel.tsx` (#16) |
 | Rover photos at stations | DONE | Station card, live NASA photos with credits |
@@ -30,11 +30,11 @@ Tests: web 154, Python 78 (+1 skipped).
 | Position beacon | DONE | Beacon + edge arrow (#19) |
 | Walk-home lines and bar | PARTIAL | Lines DONE (30/60/90 min contours of the walk-home field). Bar MISSING: waits on a colour rule (proposed: margin = limit − elapsed − walk home − turnback_reserve_s; red < 0, amber < caution_spare_s). About 30 min once agreed |
 | Printable route card | DONE | `RouteCard.tsx` + `lib/schedule.ts` (#20) |
-| Rock-unit layer | PARTIAL | Code works (#21); the geologic map is not downloaded (data-log row 12) and comes as GIS vectors, so it needs a rasterise step. About 1.5–2 h |
+| Rock-unit layer | DONE | USGS SIM 3464 polygons rasterised onto the grid (`pipeline/steps/units.py`, #27). Colours are ours: the database stores only Esri colour IDs |
 | Compare two routes | PARTIAL | Engine + `compareParams` done and tested; no UI calls `requestCompare`. About 45 min (preset picker, dashed route B, one tile) |
 | Uncertainty ring | DONE | Map ring + `uncertaintyRing` (#18) |
 | Two crew markers | MISSING | Spec gap: one estimate in the position slice (comment on #19) |
-| Zoom-to-3D | DONE | Terrain-RGB tiles + MapLibre terrain, 2D/3D switch, exaggeration slider (#25) |
+| Zoom-to-3D | DONE | Terrain-RGB tiles for the whole crater (−2925 to −1378 m), height-tinted relief, 1–10× exaggeration, "Fly to delta" / "Whole crater" views (#25, #27, #28) |
 
 ## Rafay (docs/briefs/rafay.md)
 | # | Task | Status | Note |
@@ -62,7 +62,7 @@ Tests: web 154, Python 78 (+1 skipped).
 | # | Task | Status | Note |
 | --- | --- | --- | --- |
 | 1 | Submission guide, citations | DONE / PARTIAL | Citations lack the assumptions' original sources |
-| 2 | Downloads, data log | PARTIAL | Geologic map not downloaded |
+| 2 | Downloads, data log | DONE | Geologic map downloaded and logged (row 12); waypoint file re-downloaded |
 | 4 | Walk box and base | DONE | `pipeline/manifests/jezero.yaml` (kept word for word in the merge) |
 | 5–6, 8 | `stations.py`, `photos.py`, `conditions.py` | DONE | tests pass |
 | 7 | `assumptions.json` | PARTIAL | Present; per-value source check not recorded in citations |
@@ -77,9 +77,9 @@ Tests: web 154, Python 78 (+1 skipped).
 | 8 | One-command build | DONE | `python -m pipeline build pipeline/manifests/jezero.yaml`, about 6 s |
 | 9 | Live link checks | DONE (deploy) | Production build checked locally at `/mareekh/`; a check from outside still to do by a person |
 | 10 | Video | unknown | Not in repo |
-| S | Height tiles for 3D / hillshade and geologic overlays | DONE / DONE / PARTIAL | geology: data not downloaded |
+| S | Height tiles for 3D / hillshade and geologic overlays | DONE / DONE / DONE | |
 
 ## Left for the team (not code)
 - Project page brackets and the AI-use statement; video by 19:30.
 - Open the live link on a real phone (EVA mode) and from outside the team network.
-- Optional, if time: compare-routes UI (about 45 min), walk-home bar once the rule is agreed (about 30 min), geologic overlay (about 1.5–2 h).
+- Optional, if time: compare-routes UI (about 45 min), walk-home bar once the rule is agreed (about 30 min).

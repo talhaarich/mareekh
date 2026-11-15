@@ -21,13 +21,13 @@ interface Props {
 }
 
 const LABEL_HEIGHT = 20
-const LABEL_PAD = 14 // px-1.5 each side plus a 1 px border each side
+const LABEL_PAD = 18 // px-2 each side plus a 1 px border each side
 
 let measureCtx: CanvasRenderingContext2D | null = null
 function textWidth(text: string): number {
   measureCtx ??= document.createElement('canvas').getContext('2d')
   if (!measureCtx) return text.length * 7
-  measureCtx.font = `12px ${readToken('--font-sans')}`
+  measureCtx.font = `600 12px ${readToken('--font-mono')}`
   return measureCtx.measureText(text).width
 }
 
@@ -105,14 +105,15 @@ export default function MapLabels({ mapRef, containerRef, ready, items }: Props)
       {placed.map((p) => {
         const item = byId.get(p.id)
         if (!item) return null
-        const box = 'absolute flex items-center rounded border border-line bg-panel/90 px-1.5 text-xs text-fg'
+        const box =
+          'absolute flex items-center rounded-[2px] border border-fg/75 bg-bg/90 px-2 font-mono text-[12px] font-semibold text-fg'
         const style = { left: p.x, top: p.y, width: p.w, height: p.h }
         return item.onSelect ? (
           <button
             key={p.id}
             type="button"
             style={style}
-            className={`${box} pointer-events-auto cursor-pointer hover:border-fg-muted`}
+            className={`${box} pointer-events-auto cursor-pointer hover:border-brand`}
             onClick={item.onSelect}
           >
             <span className="truncate">{item.text}</span>

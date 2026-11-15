@@ -18,9 +18,9 @@ import { STATUS_STYLE } from './status'
 
 function Tile({ label, value, source }: { label: string; value: string; source: string }) {
   return (
-    <div className="rounded-md border border-line bg-panel-2 p-2">
-      <div className="text-[11px] uppercase tracking-wider text-fg-muted">{label}</div>
-      <div className="font-mono text-base text-fg">{value}</div>
+    <div className="rounded-[3px] border border-line bg-panel-2 px-2.5 py-2">
+      <div className="text-xs text-fg-muted">{label}</div>
+      <div className="font-mono text-lg leading-snug text-fg">{value}</div>
       <div className="mt-0.5 text-[10px] leading-tight text-fg-muted">{source}</div>
     </div>
   )
@@ -79,6 +79,9 @@ export default function PlanPanel() {
   const loaded = useData((s) => s.loaded)
   const gridError = useData((s) => s.gridError)
   const assumptions = useData((s) => s.assumptions)
+  const stations = useData((s) => s.stations)
+  // Short names for the table: "Rochette (first rock cores)" -> "Rochette". The station card has the full name.
+  const stationName = (id: string) => (stations.find((s) => s.id === id)?.name ?? id).replace(/\s*\(.*\)$/, '')
   const result = usePlan((s) => s.result)
   const busy = usePlan((s) => s.busy)
   const params = usePlanParams((s) => s.params)
@@ -96,15 +99,17 @@ export default function PlanPanel() {
   return (
     <div className="space-y-5">
       <section aria-label="Walk status" className="space-y-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-          Plan {busy && <span className="normal-case tracking-normal">· planning…</span>}
+        <h2 className="font-display text-[15px] font-semibold uppercase tracking-[0.08em] text-fg">
+          Go or no-go {busy && <span className="font-sans text-xs font-normal normal-case tracking-normal text-fg-muted">· planning…</span>}
         </h2>
         {status && result ? (
           <>
-            <div className={`inline-block rounded border px-3 py-1 text-sm font-bold tracking-wider ${status.cls}`}>
-              {status.label}
+            <div className="flex items-center gap-3">
+              <div className={`shrink-0 rounded-[3px] border px-3 py-1.5 font-display text-base font-bold tracking-wider ${status.cls}`}>
+                {status.label}
+              </div>
+              <p className="text-sm leading-snug text-fg">{result.reason}</p>
             </div>
-            <p className="text-sm text-fg">{result.reason}</p>
             <p className="text-[10px] leading-tight text-fg-muted">
               Route model. Time limit from the slider below; caution margin caution_spare_s from assumptions.json.
             </p>
@@ -149,13 +154,14 @@ export default function PlanPanel() {
           </p>
 
           <section aria-label="Legs">
-            <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Legs</h3>
+            <h3 className="mb-1 font-display text-[15px] font-semibold uppercase tracking-[0.08em] text-fg">Route</h3>
             <table className="w-full text-xs">
               <thead className="text-left text-fg-muted">
                 <tr>
                   <th className="py-1 font-normal">Leg</th>
-                  <th className="py-1 text-right font-normal">Time</th>
                   <th className="py-1 text-right font-normal">Distance</th>
+                  <th className="py-1 pl-2 text-right font-normal">Time</th>
+                  <th className="py-1 pl-2 text-right font-normal">Climb</th>
                 </tr>
               </thead>
               <tbody>
@@ -169,17 +175,18 @@ export default function PlanPanel() {
                     onBlur={() => setHoverLeg(null)}
                     className={`cursor-default border-t border-line ${hoverLeg === i ? 'bg-panel-2' : ''}`}
                   >
-                    <td className="py-1 font-mono text-fg">
-                      {leg.fromId} → {leg.toId}
+                    <td className="py-1.5 pr-1 leading-tight text-fg">
+                      {stationName(leg.fromId)} to {stationName(leg.toId)}
                     </td>
-                    <td className="py-1 text-right font-mono">{leg.ok ? fmtDuration(leg.timeS) : 'no path'}</td>
-                    <td className="py-1 text-right font-mono">{leg.ok ? fmtDistance(leg.distanceM) : DASH}</td>
+                    <td className="py-1.5 text-right font-mono whitespace-nowrap">{leg.ok ? fmtDistance(leg.distanceM) : DASH}</td>
+                    <td className="py-1.5 pl-2 text-right font-mono whitespace-nowrap">{leg.ok ? fmtDuration(leg.timeS) : 'no path'}</td>
+                    <td className="py-1.5 pl-2 text-right font-mono whitespace-nowrap">{leg.ok ? `${Math.round(leg.climbM)} m` : DASH}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="mt-1 text-[10px] leading-tight text-fg-muted">
-              Times and distances: route model over the height grid, team speed model.
+              Distance, time and climb (metres gained): route model over the height grid, team speed model.
             </p>
             <div className="mt-2">
               <PrintRouteCardButton />
@@ -189,7 +196,7 @@ export default function PlanPanel() {
       )}
 
       <section aria-label="Plan settings" className="space-y-4">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Settings</h3>
+        <h3 className="font-display text-[15px] font-semibold uppercase tracking-[0.08em] text-fg">Settings</h3>
         <ReleaseSlider
           label="Slope limit"
           min={5}

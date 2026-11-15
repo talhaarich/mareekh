@@ -31,6 +31,7 @@ def test_tiles_cover_the_box_and_tilejson_describes_them(tmp_path: Path) -> None
     tj = terrain_tiles(dem, BOUNDS, str(tmp_path), 10, 12)
     assert json.loads((tmp_path / "tiles.json").read_text()) == tj
     assert tj["minzoom"] == 10 and tj["maxzoom"] == 12 and tj["encoding"] == "mapbox"
+    assert tj["height_range_m"] == [-2500.0, -2500.0]
     assert tj["bounds"] == [77.38, 18.41, 77.522, 18.512]  # TileJSON order: west, south, east, north
     files = sorted(tmp_path.glob("*/*/*.png"))
     assert len(files) == tj["tile_count"] > 0

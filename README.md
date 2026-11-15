@@ -11,19 +11,22 @@ Two astronauts leave base, collect the sample tubes Perseverance left at the Thr
 sample the delta at its base and its top, and walk home. Martian Map plans that walk on real terrain.
 
 - **Real Jezero terrain.** NASA MRO CTX height map (20 m) and photo mosaic (5 m), processed by our own
-  Python pipeline. Four map views (Satellite, Relief, Topo, Elevation) and a CRISM mineral overlay with
-  its real colour key.
+  Python pipeline. Four map views (Satellite, Relief, Topo, Elevation), a CRISM mineral overlay with
+  its real colour key, and the USGS geologic map (rock units) of Jezero.
 - **Route planner.** Finds the fastest walk through the stations around ground steeper than a slope
   limit you set, in a Web Worker. Reports time, spare time, distance, energy and radiation dose, a
   GO / CAUTION / NO-GO status with its reason, and where to turn back.
 - **Slope grid.** The exact 20 m grid the planner routes on, coloured walkable / over the plan limit /
   over the hard limit. It follows the slope slider live.
-- **3D terrain.** One click tilts the map into 3D, with a vertical exaggeration slider. The route, slope
-  grid and walk-time lines drape over the delta.
+- **3D terrain of the whole crater.** One click flies into 3D along the delta front; "Whole crater" shows
+  the rim 1.5 km above the floor. Vertical exaggeration 1–10×. The route, slope grid and walk-time lines
+  drape over the terrain.
 - **Reach from base.** Distance rings (including NASA's 10 km walk-back limit) or walk-time lines: how
   long the walk home takes from anywhere, at 30, 60 and 90 minutes.
 - **Click inspector.** Click anywhere for height, slope, whether you may walk there, and the time home.
-- **Stations from where Perseverance actually stood**, with the rover's own photos and credits.
+- **Five stations from where Perseverance actually stood**: the Three Forks sample depot, the delta's
+  base and top, Rochette (its first rock cores) and Roubion (its first coring attempt), with the rover's
+  own photos and credits.
 - **Safety and honest limits.** Radiation (Curiosity's Gale crater measurement, said so on screen),
   dust, temperature and pressure from Perseverance's MEDA, and a list of what the tool cannot know.
   Every number on screen has a unit and a source.

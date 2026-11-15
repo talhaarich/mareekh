@@ -39,8 +39,8 @@ export interface ViewState {
 
 /** Exaggeration range for the 3D view. Jezero is fairly flat, so the default lifts it. Display choices. */
 export const EXAGGERATION_MIN = 1
-export const EXAGGERATION_MAX = 3
-export const EXAGGERATION_DEFAULT = 2
+export const EXAGGERATION_MAX = 10
+export const EXAGGERATION_DEFAULT = 2.5
 
 /**
  * Two colour fills must never be on together: the walk-time lines and a data overlay.

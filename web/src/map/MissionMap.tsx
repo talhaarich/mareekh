@@ -491,7 +491,8 @@ export default function MissionMap() {
         )}
 
         {inspectAt && (
-          <Marker latitude={inspectAt.lat} longitude={inspectAt.lon} anchor="bottom" offset={[0, -6]}>
+          // Above the label layer (z-10): a destination label must never sit on top of the card.
+          <Marker latitude={inspectAt.lat} longitude={inspectAt.lon} anchor="bottom" offset={[0, -6]} style={{ zIndex: 20 }}>
             <Inspector />
           </Marker>
         )}
@@ -511,7 +512,7 @@ export default function MissionMap() {
           ready={mapReady}
           items={labelItems}
           avoidLines={routePaths}
-          relayoutKey={keyOpen}
+          relayoutKey={`${keyOpen}-${inspectAt?.lat}-${inspectAt?.lon}`}
         />
       )}
 
@@ -530,7 +531,7 @@ export default function MissionMap() {
         <div
           data-map-obstacle
           role="status"
-          className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md border border-fg-muted bg-panel/95 px-3 py-1.5 text-xs text-fg shadow"
+          className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-md border border-fg-muted bg-panel/95 px-3 py-1.5 text-xs text-fg shadow"
         >
           Click the map to drop a {pinTypeLabel(pinDropType).toLowerCase()} pin · Esc cancels
         </div>
@@ -549,14 +550,14 @@ export default function MissionMap() {
             data-map-obstacle
             onClick={() => setKeyOpen(true)}
             aria-expanded={false}
-            className="absolute bottom-3 left-3 rounded-[3px] border border-line bg-panel/90 px-3 py-1.5 text-xs font-medium text-fg backdrop-blur hover:border-fg-muted"
+            className="absolute bottom-3 left-3 z-20 rounded-[3px] border border-line bg-panel/90 px-3 py-1.5 text-xs font-medium text-fg backdrop-blur hover:border-fg-muted"
           >
             Map key ▸
           </button>
         ) : (
         <div
           data-map-obstacle
-          className="absolute bottom-3 left-3 max-h-[55%] max-w-xs space-y-3 overflow-y-auto rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
+          className="absolute bottom-3 left-3 z-20 max-h-[55%] max-w-xs space-y-3 overflow-y-auto rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
         >
           <div className="flex items-center justify-between">
             <span className="font-display text-[13px] font-semibold uppercase tracking-[0.08em] text-fg">Map key</span>

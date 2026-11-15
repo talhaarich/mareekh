@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import type { Grid } from '../lib/grid'
 import type { LatLon } from '../lib/mars'
 import * as C from './constants'
+import { normalMapRGBA, photoFields, rockDensityFactor, sampleField, type PhotoFields } from './photo'
 import { mulberry32, rocksForCell, rockSizes, type Rock } from './rocks'
 import { sunDirection } from './sun'
 import { buildChunk, gridMap, makeFrame, slopeAt, terrainHeight, toLatLon, toLocal, type Frame, type GridMap, type NoiseOptions } from './terrain'
@@ -17,7 +18,9 @@ export interface SceneColors {
   skyZenith: string
   sunGlow: string
   regolith: string
-  rock: string
+  /** Rock colours: each rock sits between these two (grey-brown basalt), darker or lighter. */
+  rockBrown: string
+  rockGrey: string
   route: string
   base: string
   station: string
@@ -70,51 +73,39 @@ const MOVE_KEYS: Record<string, [number, number]> = {
   ArrowRight: [0, 1],
 }
 
-const TERRAIN_VERTEX = /* glsl */ `
-varying vec3 vWorld;
-varying vec3 vNormal;
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  vNormal = normal;
-  vec4 w = modelMatrix * vec4(position, 1.0);
-  vWorld = w.xyz;
-  gl_Position = projectionMatrix * viewMatrix * w;
-}`
+/**
+ * Additions to three's standard material for the ground: a fine regolith grain under the photo (close up
+ * only) and the fade into haze at the patch edge. Lighting, shadows, fog and the photo stay three's own.
+ */
+function groundShader(material: THREE.MeshStandardMaterial, uniforms: Record<string, THREE.IUniform>): void {
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms)
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vMmWorld;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvMmWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;')
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vMmWorld;\nuniform sampler2D mmDetail;\nuniform float mmTile;\nuniform float mmDetailAmp;\nuniform float mmDetailNear;\nuniform float mmDetailFar;\nuniform float mmEdgeStart;\nuniform float mmEdgeEnd;',
+      )
+      .replace(
+        '#include <map_fragment>',
+        // The photo sets the colour; the grain only varies it a little, and only close up.
+        '#include <map_fragment>\nfloat mmNear = 1.0 - smoothstep(mmDetailNear, mmDetailFar, distance(vMmWorld, cameraPosition));\ndiffuseColor.rgb *= 1.0 + (texture2D(mmDetail, vMmWorld.xz / mmTile).r - 0.5) * 2.0 * mmDetailAmp * mmNear;',
+      )
+      .replace(
+        '#include <fog_fragment>',
+        '#include <fog_fragment>\ngl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, smoothstep(mmEdgeStart, mmEdgeEnd, length(vMmWorld.xz)));',
+      )
+  }
+}
 
-const TERRAIN_FRAGMENT = /* glsl */ `
-uniform sampler2D satMap;
-uniform float hasSat;
-uniform sampler2D detailMap;
-uniform vec3 regolith;
-uniform vec3 sunDir;
-uniform vec3 sunColor;
-uniform vec3 skyLight;
-uniform vec3 fogColor;
-uniform float fogDensity;
-uniform float edgeStart;
-uniform float edgeEnd;
-uniform float detailTile;
-uniform float detailNear;
-uniform float detailFar;
-varying vec3 vWorld;
-varying vec3 vNormal;
-varying vec2 vUv;
-void main() {
-  float g = hasSat > 0.5 ? dot(texture2D(satMap, vUv).rgb, vec3(0.299, 0.587, 0.114)) : 0.5;
-  vec3 base = regolith * (0.45 + 1.1 * g);
-  float d = distance(vWorld, cameraPosition);
-  float near = 1.0 - smoothstep(detailNear, detailFar, d);
-  float det = texture2D(detailMap, vWorld.xz / detailTile).r;
-  base *= mix(1.0, 0.7 + 0.6 * det, near);
-  float lam = max(dot(normalize(vNormal), sunDir), 0.0);
-  vec3 col = base * (skyLight + sunColor * lam);
-  float fog = 1.0 - exp(-fogDensity * d);
-  float edge = smoothstep(edgeStart, edgeEnd, length(vWorld.xz));
-  col = mix(col, fogColor, clamp(max(fog, edge), 0.0, 1.0));
-  gl_FragColor = vec4(col, 1.0);
-  #include <colorspace_fragment>
-}`
+/** White tinted `k` of the way toward `c` scaled to unit brightness, so the tint colours but does not darken. */
+function tintTowards(c: THREE.Color, k: number): THREE.Color {
+  const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+  const unit = lum > 0 ? c.clone().multiplyScalar(1 / lum) : new THREE.Color(1, 1, 1)
+  return new THREE.Color(1, 1, 1).lerp(unit, k)
+}
 
 const SKY_VERTEX = /* glsl */ `
 varying vec3 vDir;
@@ -157,7 +148,7 @@ export class GroundSceneController {
   private readonly renderer: THREE.WebGLRenderer
   private readonly scene = new THREE.Scene()
   private readonly camera: THREE.PerspectiveCamera
-  private readonly terrainMaterial: THREE.ShaderMaterial
+  private readonly terrainMaterial: THREE.MeshStandardMaterial
   private readonly skyMaterial: THREE.ShaderMaterial
   private readonly sky: THREE.Mesh
   private readonly sun: THREE.DirectionalLight
@@ -192,6 +183,10 @@ export class GroundSceneController {
   private hudAt = 0
   private drawn = false
   private sunElevationDeg = 0
+  private openedAt = 0
+  private readonly sunDir = new THREE.Vector3(0, 1, 0)
+  /** Roughness and brightness from the photo (null until it has loaded): set rock density. */
+  private photo: PhotoFields | null = null
 
   constructor(inputs: SceneInputs) {
     this.i = inputs
@@ -215,6 +210,12 @@ export class GroundSceneController {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, C.QUALITY_LEVELS[0].pixelRatio))
     this.renderer.setSize(inputs.container.clientWidth, inputs.container.clientHeight)
+    this.renderer.shadowMap.enabled = true
+    this.renderer.shadowMap.type = THREE.PCFShadowMap
+    // Filmic tone mapping: stronger contrast, and the photo's low albedo is not lost in the dark.
+    // Route, beacons and labels opt out (toneMapped: false) so their colours stay exact.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = C.EXPOSURE
     this.renderer.domElement.style.display = 'block'
     this.renderer.domElement.style.touchAction = 'none'
     inputs.container.appendChild(this.renderer.domElement)
@@ -245,30 +246,38 @@ export class GroundSceneController {
     this.sky.frustumCulled = false
     this.scene.add(this.sky)
 
+    // One sun, casting shadows over a square around you (it follows you each frame), and a low sky light.
     this.sun = new THREE.DirectionalLight(col(inputs.colors.sunGlow), C.SUN_INTENSITY)
+    this.sun.castShadow = true
+    const sc = this.sun.shadow.camera
+    sc.left = -C.SHADOW_RADIUS_M
+    sc.right = C.SHADOW_RADIUS_M
+    sc.top = C.SHADOW_RADIUS_M
+    sc.bottom = -C.SHADOW_RADIUS_M
+    sc.near = 1
+    sc.far = 5000
+    this.sun.shadow.mapSize.set(C.QUALITY_LEVELS[0].shadowMapPx, C.QUALITY_LEVELS[0].shadowMapPx)
+    this.sun.shadow.bias = -0.001
+    this.sun.shadow.normalBias = 1.2
     this.hemi = new THREE.HemisphereLight(col(inputs.colors.skyZenith), col(inputs.colors.regolith), C.SKY_LIGHT_INTENSITY)
     this.scene.add(this.sun, this.sun.target, this.hemi)
 
-    this.terrainMaterial = new THREE.ShaderMaterial({
-      vertexShader: TERRAIN_VERTEX,
-      fragmentShader: TERRAIN_FRAGMENT,
-      uniforms: {
-        satMap: { value: null },
-        hasSat: { value: 0 },
-        detailMap: { value: this.detailTexture() },
-        regolith: { value: col(inputs.colors.regolith) },
-        sunDir: { value: new THREE.Vector3(0, 1, 0) },
-        sunColor: { value: new THREE.Color(1, 1, 1) },
-        skyLight: { value: new THREE.Color(0.3, 0.3, 0.3) },
-        fogColor: { value: col(inputs.colors.skyHorizon) },
-        fogDensity: { value: fogDensity },
-        edgeStart: { value: C.EDGE_FADE_START_M },
-        edgeEnd: { value: C.EDGE_FADE_END_M },
-        detailTile: { value: C.DETAIL_TILE_M },
-        detailNear: { value: C.DETAIL_FADE_START_M },
-        detailFar: { value: C.DETAIL_FADE_END_M },
-      },
+    // The ground: the 5 m orbital photo as its colour (tinted at most PHOTO_TINT toward regolith), its
+    // high-pass as a normal map, three's lighting and shadows, the regolith grain underneath.
+    this.terrainMaterial = new THREE.MeshStandardMaterial({
+      color: tintTowards(col(inputs.colors.regolith), C.PHOTO_TINT),
+      roughness: 1,
+      metalness: 0,
       side: THREE.DoubleSide,
+    })
+    groundShader(this.terrainMaterial, {
+      mmDetail: { value: this.detailTexture() },
+      mmTile: { value: C.DETAIL_TILE_M },
+      mmDetailAmp: { value: C.DETAIL_AMPLITUDE },
+      mmDetailNear: { value: C.DETAIL_FADE_START_M },
+      mmDetailFar: { value: C.DETAIL_FADE_END_M },
+      mmEdgeStart: { value: C.EDGE_FADE_START_M },
+      mmEdgeEnd: { value: C.EDGE_FADE_END_M },
     })
     this.loadSatellite()
 
@@ -305,16 +314,20 @@ export class GroundSceneController {
   setLocalHour(hour: number): void {
     const s = sunDirection(hour, this.frame.lat0, C.SUN_DECLINATION_DEG)
     this.sunElevationDeg = s.elevationDeg
-    const dir = new THREE.Vector3(s.east, s.up, -s.north).normalize()
-    this.terrainMaterial.uniforms.sunDir.value.copy(dir)
-    this.skyMaterial.uniforms.sunDir.value.copy(dir)
-    this.sun.position.copy(dir).multiplyScalar(1000)
-    // Dimmer light with the sun low (illustrative).
-    const k = THREE.MathUtils.smoothstep(s.elevationDeg, -2, 20)
+    this.sunDir.set(s.east, s.up, -s.north).normalize()
+    this.skyMaterial.uniforms.sunDir.value.copy(this.sunDir)
+    this.placeSun()
+    // The sun fades out as it sets (illustrative); the sky light stays low for contrast.
+    const k = THREE.MathUtils.smoothstep(s.elevationDeg, -2, 8)
     this.sun.intensity = C.SUN_INTENSITY * k
-    this.hemi.intensity = C.SKY_LIGHT_INTENSITY * (0.4 + 0.6 * k)
-    this.terrainMaterial.uniforms.sunColor.value.setScalar(0.95 * k)
-    this.terrainMaterial.uniforms.skyLight.value.setScalar(0.18 + 0.22 * k)
+    this.hemi.intensity = C.SKY_LIGHT_INTENSITY * (0.6 + 0.4 * k)
+  }
+
+  /** The sun and its shadow box follow you. */
+  private placeSun(): void {
+    const at = this.camera.position
+    this.sun.target.position.copy(at)
+    this.sun.position.copy(at).addScaledVector(this.sunDir, 2000)
   }
 
   dispose(): void {
@@ -344,6 +357,7 @@ export class GroundSceneController {
       m.dispose()
     }
     for (const t of this.textures) t.dispose()
+    this.sun.shadow.dispose()
     this.terrainMaterial.dispose()
     this.skyMaterial.dispose()
     this.chunks.clear()
@@ -362,13 +376,13 @@ export class GroundSceneController {
     const ce = Math.min(b.maxE, Math.max(b.minE, e))
     const cn = Math.min(b.maxN, Math.max(b.minN, n))
     const g = this.gmap
-    return terrainHeight(this.i.grid, g.fx0 + ce * g.fxPerE, g.fy0 + cn * g.fyPerN, this.noise) ?? 0
+    return terrainHeight(this.i.grid, g.fx0 + ce * g.fxPerE, g.fy0 + cn * g.fyPerN, this.noise, C.HEIGHT_TENSION) ?? 0
   }
 
   /** Ground height anywhere on the grid (not clipped to the patch), for beacons beyond it. */
   private gridHeightAt(e: number, n: number): number {
     const g = this.gmap
-    return terrainHeight(this.i.grid, g.fx0 + e * g.fxPerE, g.fy0 + n * g.fyPerN, this.noise) ?? 0
+    return terrainHeight(this.i.grid, g.fx0 + e * g.fxPerE, g.fy0 + n * g.fyPerN, this.noise, C.HEIGHT_TENSION) ?? 0
   }
 
   private uvAt = (e: number, n: number): [number, number] => {
@@ -388,17 +402,54 @@ export class GroundSceneController {
           tex.dispose()
           return
         }
+        // Full resolution, sharp at a glancing angle.
         tex.colorSpace = THREE.SRGBColorSpace
-        tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
+        tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy()
         this.textures.push(tex)
-        this.terrainMaterial.uniforms.satMap.value = tex
-        this.terrainMaterial.uniforms.hasSat.value = 1
+        this.terrainMaterial.map = tex
+        this.usePhoto(tex.image as HTMLImageElement | ImageBitmap)
+        this.terrainMaterial.needsUpdate = true
       },
       undefined,
       () => {
         // No picture: the ground keeps the plain regolith tint.
       },
     )
+  }
+
+  /**
+   * From the photo's pixels: the normal map (lighting only) and the roughness and brightness that set rock
+   * density. Rocks are re-placed once these are known.
+   */
+  private usePhoto(image: HTMLImageElement | ImageBitmap): void {
+    const w = image.width
+    const h = image.height
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx || w === 0 || h === 0) return
+    ctx.drawImage(image, 0, 0)
+    const px = ctx.getImageData(0, 0, w, h).data
+    const lum = new Float32Array(w * h)
+    for (let i = 0; i < w * h; i++) lum[i] = (0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]) / 255
+    const fields = photoFields(lum, w, h, C.PHOTO_HIGHPASS_PX, C.PHOTO_AREA_PX)
+    const normal = new THREE.DataTexture(normalMapRGBA(fields.highPass, w, h, C.PHOTO_NORMAL_STRENGTH), w, h)
+    normal.wrapS = THREE.ClampToEdgeWrapping
+    normal.wrapT = THREE.ClampToEdgeWrapping
+    normal.minFilter = THREE.LinearMipmapLinearFilter
+    normal.magFilter = THREE.LinearFilter
+    normal.generateMipmaps = true
+    normal.anisotropy = this.renderer.capabilities.getMaxAnisotropy()
+    normal.needsUpdate = true
+    this.textures.push(normal)
+    this.terrainMaterial.normalMap = normal
+    this.photo = fields
+    this.rockCache.clear()
+    this.updateRocks(true)
+    // That took a long frame once; do not let it count as slow rendering.
+    this.frameTimes = []
+    this.windowStart = 0
   }
 
   /** Tiled close-up regolith grain (illustrative), generated, so nothing extra is downloaded. */
@@ -492,6 +543,8 @@ export class GroundSceneController {
         have.level = w.level
       } else {
         const mesh = new THREE.Mesh(geom, this.terrainMaterial)
+        mesh.castShadow = true
+        mesh.receiveShadow = true
         this.scene.add(mesh)
         this.chunks.set(w.key, { ci: w.ci, cj: w.cj, level: w.level, mesh })
       }
@@ -501,7 +554,8 @@ export class GroundSceneController {
   // ---------- rocks ----------
 
   private buildRockMeshes(): void {
-    const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(this.i.colors.rock), flatShading: true })
+    // White base: each rock gets its own grey-brown through its instance colour.
+    const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0, flatShading: true })
     for (let v = 0; v < C.ROCK_VARIANTS; v++) {
       const rand = mulberry32(C.WORLD_SEED + 31 * v)
       const geom = new THREE.IcosahedronGeometry(0.5, v % 2)
@@ -517,6 +571,8 @@ export class GroundSceneController {
       geom.computeVertexNormals()
       const mesh = new THREE.InstancedMesh(geom, material, 1)
       mesh.frustumCulled = false
+      mesh.castShadow = true
+      mesh.receiveShadow = true
       mesh.count = 0
       this.rockMeshes.push(mesh)
       this.scene.add(mesh)
@@ -535,7 +591,9 @@ export class GroundSceneController {
     const fy = g.fy0 + this.n * g.fyPerN
     const spanC = Math.ceil(radius / g.cellE) + 1
     const spanR = Math.ceil(radius / g.cellN) + 1
-    const perVariant: THREE.Matrix4[][] = Array.from({ length: C.ROCK_VARIANTS }, () => [])
+    const perVariant: { m: THREE.Matrix4; c: THREE.Color }[][] = Array.from({ length: C.ROCK_VARIANTS }, () => [])
+    const brown = new THREE.Color(this.i.colors.rockBrown)
+    const grey = new THREE.Color(this.i.colors.rockGrey)
     const m = new THREE.Matrix4()
     const quat = new THREE.Quaternion()
     const up = new THREE.Vector3(0, 1, 0)
@@ -549,7 +607,13 @@ export class GroundSceneController {
         const key = r * width + c
         let rocks = this.rockCache.get(key)
         if (!rocks) {
-          rocks = rocksForCell(r, c, area, this.rockSizes, {
+          // Fewer rocks overall, and more where the photo looks rough or bright (illustrative).
+          const [u, v] = this.uvAt((c - g.fx0) / g.fxPerE, (r - g.fy0) / g.fyPerN)
+          const ph = this.photo
+          const density = ph
+            ? rockDensityFactor(sampleField(ph.rough, ph.width, ph.height, u, v), sampleField(ph.bright, ph.width, ph.height, u, v), ph.meanRough, ph.meanBright)
+            : 1
+          rocks = rocksForCell(r, c, area * density * C.ROCK_COUNT_SCALE, this.rockSizes, {
             worldSeed: C.WORLD_SEED,
             variants: C.ROCK_VARIANTS,
             squashMin: C.ROCK_SQUASH_MIN,
@@ -568,7 +632,9 @@ export class GroundSceneController {
           pos.set(e, this.heightAt(e, n) + h * (0.5 - C.ROCK_SINK), -n)
           quat.setFromAxisAngle(up, rock.yaw)
           scale.set(rock.d, h, rock.d)
-          perVariant[rock.variant].push(m.compose(pos, quat, scale).clone())
+          // Grey-brown basalt: somewhere between the two shades, lighter or darker.
+          const shade = 0.55 + 0.45 * ((rock.tone * 7.31) % 1)
+          perVariant[rock.variant].push({ m: m.compose(pos, quat, scale).clone(), c: brown.clone().lerp(grey, rock.tone).multiplyScalar(shade) })
         }
       }
     }
@@ -578,15 +644,21 @@ export class GroundSceneController {
         // Grow the instance buffer (rarely: only when the rock radius grows).
         const bigger = new THREE.InstancedMesh(mesh.geometry, mesh.material, Math.ceil(list.length * 1.5))
         bigger.frustumCulled = false
+        bigger.castShadow = true
+        bigger.receiveShadow = true
         this.scene.remove(mesh)
         mesh.dispose()
         this.scene.add(bigger)
         this.rockMeshes[v] = bigger
         mesh = bigger
       }
-      list.forEach((mat, k) => mesh.setMatrixAt(k, mat))
+      list.forEach((x, k) => {
+        mesh.setMatrixAt(k, x.m)
+        mesh.setColorAt(k, x.c)
+      })
       mesh.count = list.length
       mesh.instanceMatrix.needsUpdate = true
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     })
   }
 
@@ -643,7 +715,7 @@ export class GroundSceneController {
     const geom = new THREE.BufferGeometry()
     geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     geom.setIndex(indices)
-    const mat = new THREE.MeshBasicMaterial({
+    const mat = new THREE.MeshBasicMaterial({ toneMapped: false,
       color: new THREE.Color(this.i.colors.route),
       side: THREE.DoubleSide,
       polygonOffset: true,
@@ -661,13 +733,13 @@ export class GroundSceneController {
       if (Math.hypot(p.e, p.n) > C.FAR_M * 0.8) return
       const color = new THREE.Color(s.id === 'B' ? this.i.colors.base : this.i.colors.station)
       const ground = this.inPatch(p.e, p.n) ? this.heightAt(p.e, p.n) : this.gridHeightAt(p.e, p.n)
-      const pole = new THREE.Mesh(poleGeom.clone(), new THREE.MeshBasicMaterial({ color, fog: false, transparent: true, opacity: 0.85 }))
+      const pole = new THREE.Mesh(poleGeom.clone(), new THREE.MeshBasicMaterial({ toneMapped: false, color, fog: false, transparent: true, opacity: 0.85 }))
       pole.position.set(p.e, ground + C.BEACON_HEIGHT_M / 2, -p.n)
       this.scene.add(pole)
       // A line up the pole stays one pixel wide however far away, so distant beacons do not vanish.
       const line = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p.e, ground, -p.n), new THREE.Vector3(p.e, ground + C.BEACON_HEIGHT_M, -p.n)]),
-        new THREE.LineBasicMaterial({ color, fog: false }),
+        new THREE.LineBasicMaterial({ color, fog: false, toneMapped: false }),
       )
       this.scene.add(line)
       const label = this.labelSprite(`${s.id} · ${s.name}`, color)
@@ -701,7 +773,7 @@ export class GroundSceneController {
     const tex = new THREE.CanvasTexture(canvas)
     tex.colorSpace = THREE.SRGBColorSpace
     // Drawn over everything, so a ridge never hides which way a station is.
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, sizeAttenuation: false, fog: false, depthTest: false }))
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, sizeAttenuation: false, fog: false, depthTest: false, toneMapped: false }))
     sprite.renderOrder = 10
     sprite.scale.set((C.BEACON_LABEL_SCREEN * w) / h, C.BEACON_LABEL_SCREEN, 1)
     sprite.center.set(0.5, 0)
@@ -801,7 +873,7 @@ export class GroundSceneController {
     this.camera.position.set(this.e, this.heightAt(this.e, this.n) + C.EYE_HEIGHT_M, -this.n)
     this.camera.rotation.set(this.pitch, -this.yaw, 0)
     this.sky.position.copy(this.camera.position)
-    this.sun.target.position.copy(this.camera.position)
+    this.placeSun()
 
     if (!this.lodAt || Math.hypot(this.e - this.lodAt.e, this.n - this.lodAt.n) > 20) {
       this.lodAt = { e: this.e, n: this.n }
@@ -820,6 +892,9 @@ export class GroundSceneController {
 
   /** Lower detail when frames are slow, raise it again when there is time to spare. */
   private watchFrames(now: number, dt: number): void {
+    // The first seconds compile shaders and build the ground: not a sign of a slow machine.
+    if (this.openedAt === 0) this.openedAt = now
+    if (now - this.openedAt < C.QUALITY_WARMUP_S * 1000) return
     this.frameTimes.push(dt * 1000)
     if (this.windowStart === 0) this.windowStart = now
     if (now - this.windowStart < C.QUALITY_WINDOW_S * 1000) return
@@ -845,6 +920,10 @@ export class GroundSceneController {
   private setQuality(level: number): void {
     this.quality = level
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, C.QUALITY_LEVELS[level].pixelRatio))
+    const px = C.QUALITY_LEVELS[level].shadowMapPx
+    this.sun.shadow.mapSize.set(px, px)
+    this.sun.shadow.map?.dispose()
+    this.sun.shadow.map = null
     this.lodAt = null
     this.updateRocks(true)
   }

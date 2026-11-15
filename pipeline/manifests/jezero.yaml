@@ -118,6 +118,7 @@ layers:
     name: 3D terrain
     group: view
     type: terrain
-    url: "terrain/{z}/{x}/{y}.png"
+    url: terrain/tiles.json   # TileJSON: zoom range and bounds; tiles at terrain/{z}/{x}/{y}.png (CONTRACTS)
+    options: { minzoom: 8, maxzoom: 13 }   # z12 is about the 20 m cell size; the app over-zooms past 13
     credit: "Derived from the CTX height map (NASA/JPL/MSSS; mosaic by USGS Astrogeology)"
     caveat: "Visual only: heights are exaggerated. Slope and routes come from the height grid, not the 3D view."

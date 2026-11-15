@@ -2,8 +2,9 @@ import { useMemo } from 'react'
 import { overlayLayers, resolveBaseView, viewLayers } from '../map/layers'
 import { useLayerAvailability } from '../map/useLayerAvailability'
 import { SLOPE_OVERLAY_ID } from '../map/SlopeGridLayer'
+import { useTerrainSource } from '../map/terrain'
 import { useData } from '../state/data'
-import { reachBlockedByOverlay, useView } from '../state/view'
+import { EXAGGERATION_MAX, EXAGGERATION_MIN, reachBlockedByOverlay, useView } from '../state/view'
 import type { Reach } from '../state/view'
 
 const REACH_OPTIONS: { id: Reach; label: string }[] = [
@@ -53,6 +54,11 @@ function RadioRow({ name, label, checked, disabled = false, note, title, onSelec
 
 export default function LayerControls() {
   const manifest = useData((s) => s.manifest)
+  const dem = useTerrainSource(manifest)
+  const terrain3d = useView((s) => s.terrain3d)
+  const exaggeration = useView((s) => s.exaggeration)
+  const setTerrain3d = useView((s) => s.setTerrain3d)
+  const setExaggeration = useView((s) => s.setExaggeration)
   const hasGrid = useData((s) => s.grid !== null)
   const available = useLayerAvailability((s) => s.available)
 
@@ -83,6 +89,43 @@ export default function LayerControls() {
   return (
     <div className="space-y-6">
       <Group title="Map view">
+        <div role="group" aria-label="2D or 3D" className="flex overflow-hidden rounded border border-line">
+          {(['2D', '3D'] as const).map((d) => {
+            const on = (d === '3D') === terrain3d
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={on}
+                disabled={d === '3D' && !dem}
+                title={d === '3D' && !dem ? 'No height tiles built yet' : undefined}
+                onClick={() => setTerrain3d(d === '3D')}
+                className={`flex-1 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${
+                  on ? 'bg-route/15 text-route' : 'text-fg-muted hover:text-fg'
+                }`}
+              >
+                {d}
+              </button>
+            )
+          })}
+        </div>
+        {terrain3d && dem && (
+          <label className="block text-xs text-fg-muted">
+            Vertical exaggeration: {exaggeration.toFixed(1)}× (display setting)
+            <input
+              type="range"
+              min={EXAGGERATION_MIN}
+              max={EXAGGERATION_MAX}
+              step={0.1}
+              value={exaggeration}
+              onChange={(e) => setExaggeration(Number(e.target.value))}
+              className="mt-1 w-full accent-route"
+            />
+            <span className="block text-[10px] leading-tight">
+              Visual only. Drag with the right mouse button (or two fingers) to tilt and turn.
+            </span>
+          </label>
+        )}
         {views.map((v) => (
           <RadioRow
             key={v.id}

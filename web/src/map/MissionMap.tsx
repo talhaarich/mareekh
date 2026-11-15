@@ -24,6 +24,7 @@ import SlopeGridLayer, { SLOPE_OVERLAY_ID, SlopeKeyBlock } from './SlopeGridLaye
 import { pinLabelText, pinTypeLabel } from './pinLabels'
 import { maplibregl } from './maplibreSetup'
 import { readToken } from './tokens'
+import { useTerrainSource } from './terrain'
 import { useLayerAvailability } from './useLayerAvailability'
 
 /** Credit, caveat and colour key for one layer. Every layer shown must say where it came from. */
@@ -77,6 +78,13 @@ function RouteLayer() {
 
   return (
     <Source id="mm-route" type="geojson" data={data}>
+      {/* Soft glow under the line: reads well over dark ground and in 3D. */}
+      <Layer
+        id="mm-route-glow"
+        type="line"
+        layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+        paint={{ 'line-color': routeColor, 'line-width': 12, 'line-blur': 8, 'line-opacity': 0.35 }}
+      />
       <Layer
         id="mm-route-line"
         type="line"
@@ -137,6 +145,35 @@ export default function MissionMap() {
   const overlay = useView((s) => s.overlay)
   const overlayStrength = useView((s) => s.overlayStrength)
   const showLabels = useView((s) => s.showLabels)
+  const terrain3d = useView((s) => s.terrain3d)
+  const exaggeration = useView((s) => s.exaggeration)
+  const dem = useTerrainSource(manifest)
+  const terrainOn = terrain3d && dem !== null
+
+  // Sky, fog and hillshade colours from tokens.css (MapLibre paints on a canvas, so no CSS variables).
+  const look = useMemo(
+    () => ({
+      sky: {
+        'sky-color': readToken('--color-sky'),
+        'horizon-color': readToken('--color-horizon'),
+        'fog-color': readToken('--color-fog'),
+        'sky-horizon-blend': 0.6,
+        'horizon-fog-blend': 0.7,
+        'fog-ground-blend': 0.9,
+        'atmosphere-blend': 0,
+      },
+      shadow: readToken('--color-bg'),
+      highlight: readToken('--color-fg'),
+    }),
+    [],
+  )
+
+  // Tilt into 3D, flat again for 2D.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map) return
+    map.easeTo(terrainOn ? { pitch: 62, bearing: -25, duration: 1200 } : { pitch: 0, bearing: 0, duration: 800 })
+  }, [mapReady, terrainOn])
 
   const views = useMemo(() => viewLayers(manifest), [manifest])
   const overlays = useMemo(() => overlayLayers(manifest), [manifest])
@@ -226,6 +263,9 @@ export default function MissionMap() {
         mapStyle={blankStyle}
         initialViewState={{ latitude: 18.4446, longitude: 77.4509, zoom: 11 }}
         attributionControl={false}
+        maxPitch={80}
+        terrain={terrainOn ? { source: 'mm-dem', exaggeration } : undefined}
+        sky={terrainOn ? look.sky : undefined}
         cursor={pinDropType ? 'crosshair' : undefined}
         onClick={(e) => {
           if (pinDropType) {
@@ -271,6 +311,47 @@ export default function MissionMap() {
               />
             </Source>
           ))}
+
+        {/* 3D: one height source for the terrain, a second for the hillshade (MapLibre's advice). Both
+            stay mounted once the tiles exist, so turning 3D on never waits for a source. */}
+        {dem && (
+          <Source
+            id="mm-dem"
+            type="raster-dem"
+            tiles={dem.tiles}
+            tileSize={256}
+            encoding={dem.encoding}
+            minzoom={dem.minzoom}
+            maxzoom={dem.maxzoom}
+            bounds={dem.bounds}
+          />
+        )}
+        {dem && (
+          <Source
+            id="mm-dem-shade"
+            type="raster-dem"
+            tiles={dem.tiles}
+            tileSize={256}
+            encoding={dem.encoding}
+            minzoom={dem.minzoom}
+            maxzoom={dem.maxzoom}
+            bounds={dem.bounds}
+          >
+            <Layer
+              id="mm-hillshade"
+              type="hillshade"
+              beforeId={ANCHOR_OVERLAYS}
+              layout={{ visibility: terrainOn ? 'visible' : 'none' }}
+              paint={{
+                'hillshade-shadow-color': look.shadow,
+                'hillshade-highlight-color': look.highlight,
+                'hillshade-accent-color': look.shadow,
+                'hillshade-exaggeration': 0.35,
+                'hillshade-illumination-direction': 315,
+              }}
+            />
+          </Source>
+        )}
 
         <SlopeGridLayer visible={overlay === SLOPE_OVERLAY_ID} opacity={overlayStrength} />
 
@@ -349,7 +430,7 @@ export default function MissionMap() {
           </Marker>
         )}
 
-        <NavigationControl position="top-right" showCompass visualizePitch={false} />
+        <NavigationControl position="top-right" showCompass visualizePitch />
       </MapGL>
 
       {showLabels && (

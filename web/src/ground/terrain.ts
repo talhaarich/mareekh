@@ -67,9 +67,17 @@ export function cellHeight(grid: Grid, row: number, col: number): number | null 
   return v === nodata || !Number.isFinite(v) ? null : v
 }
 
-/** Catmull-Rom between p1 (t = 0) and p2 (t = 1). Exactly p1 at t = 0. */
-function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): number {
-  return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t)
+/**
+ * Cardinal spline between p1 (t = 0) and p2 (t = 1): Catmull-Rom at tension 0; higher tension shortens the
+ * tangents, so edges (crater rims, scarps) are rounded off less and overshoot less. Exactly p1 at t = 0.
+ */
+function cardinal(p0: number, p1: number, p2: number, p3: number, t: number, tension: number): number {
+  const k = (1 - tension) / 2
+  const m1 = k * (p2 - p0)
+  const m2 = k * (p3 - p1)
+  const t2 = t * t
+  const t3 = t2 * t
+  return (2 * t3 - 3 * t2 + 1) * p1 + (t3 - 2 * t2 + t) * m1 + (-2 * t3 + 3 * t2) * p2 + (t3 - t2) * m2
 }
 
 const neighbours = new Float64Array(16)
@@ -77,8 +85,9 @@ const neighbours = new Float64Array(16)
 /**
  * Bicubic height at fractional grid coordinates, metres. Exact at whole (fx, fy). Outside the grid the
  * edge cells are used. Missing neighbours are replaced by the mean of the others; null if all 16 are missing.
+ * `tension` 0 is Catmull-Rom; up to 1 is sharper (see cardinal()).
  */
-export function bicubicHeight(grid: Grid, fx: number, fy: number): number | null {
+export function bicubicHeight(grid: Grid, fx: number, fy: number, tension = 0): number | null {
   const { width, height } = grid.meta
   const x = Math.min(width - 1, Math.max(0, fx))
   const y = Math.min(height - 1, Math.max(0, fy))
@@ -108,12 +117,13 @@ export function bicubicHeight(grid: Grid, fx: number, fy: number): number | null
     for (let k = 0; k < 16; k++) if (Number.isNaN(neighbours[k])) neighbours[k] = mean
   }
   const nb = neighbours
-  return catmullRom(
-    catmullRom(nb[0], nb[1], nb[2], nb[3], tx),
-    catmullRom(nb[4], nb[5], nb[6], nb[7], tx),
-    catmullRom(nb[8], nb[9], nb[10], nb[11], tx),
-    catmullRom(nb[12], nb[13], nb[14], nb[15], tx),
+  return cardinal(
+    cardinal(nb[0], nb[1], nb[2], nb[3], tx, tension),
+    cardinal(nb[4], nb[5], nb[6], nb[7], tx, tension),
+    cardinal(nb[8], nb[9], nb[10], nb[11], tx, tension),
+    cardinal(nb[12], nb[13], nb[14], nb[15], tx, tension),
     ty,
+    tension,
   )
 }
 
@@ -177,8 +187,8 @@ export function bumpNoise(fx: number, fy: number, cellM: number, o: NoiseOptions
 }
 
 /** Ground height at fractional grid coordinates, metres: bicubic grid height plus bumps. Null on no data. */
-export function terrainHeight(grid: Grid, fx: number, fy: number, noise: NoiseOptions): number | null {
-  const h = bicubicHeight(grid, fx, fy)
+export function terrainHeight(grid: Grid, fx: number, fy: number, noise: NoiseOptions, tension = 0): number | null {
+  const h = bicubicHeight(grid, fx, fy, tension)
   if (h === null) return null
   return h + bumpNoise(fx, fy, grid.meta.resM, noise)
 }

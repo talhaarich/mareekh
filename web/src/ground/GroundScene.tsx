@@ -10,7 +10,7 @@ import { readToken } from '../map/tokens'
 import { assumptionValue, useData, type Photo } from '../state/data'
 import { usePlan } from '../state/plan'
 import { selectTimeLeftS, usePosition } from '../state/position'
-import { AT_STATION_M, FADE_IN_MS, FAST_TRAVEL, LOCAL_HOUR_MAX, LOCAL_HOUR_MIN, START_LOCAL_HOUR } from './constants'
+import { AT_STATION_M, OPENING_VIEWS, FADE_IN_MS, FAST_TRAVEL, LOCAL_HOUR_MAX, LOCAL_HOUR_MIN, START_LOCAL_HOUR } from './constants'
 import { GroundSceneController, type HudState } from './scene'
 
 interface Props {
@@ -92,7 +92,8 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
           skyZenith: readToken('--color-relief-4'),
           sunGlow: readToken('--color-fg'),
           regolith: readToken('--color-relief-4'),
-          rock: readToken('--color-relief-3'),
+          rockBrown: readToken('--color-relief-3'),
+          rockGrey: readToken('--color-fg-muted'),
           route: readToken('--color-route'),
           base: readToken('--color-brand'),
           station: readToken('--color-fg'),
@@ -104,7 +105,11 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
       // Face the next station on the planned route, or north with no plan.
       const nextId = nextStationId(legs, at, stationId, distanceM)
       const next = d.stations.find((s) => s.id === nextId)
-      if (next) c.setHeading(bearingDeg(at, next))
+      // A few stations open on a chosen view (OPENING_VIEWS); otherwise face the next station.
+      const here = stationId ? d.stations.find((s) => s.id === stationId) : undefined
+      const opening = here ? OPENING_VIEWS[here.name] : undefined
+      if (opening !== undefined) c.setHeading(opening)
+      else if (next) c.setHeading(bearingDeg(at, next))
       ctl.current = c
     } catch (e) {
       // WebGL unavailable, for example. Reported on screen instead of a blank page.
@@ -164,7 +169,7 @@ export default function GroundScene({ at, stationId, onClose }: Props) {
         className="pointer-events-none absolute left-1/2 top-3 z-10 w-[min(44rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-md border border-caution bg-panel/95 px-3 py-1.5 text-center text-xs font-semibold shadow"
       >
         Simulated view. Heights from orbital data every {grid?.meta.resM ?? 20} m; small bumps and rocks are illustrative, real
-        rocks are too small to see from orbit.
+        rocks are too small to see from orbit. Surface texture from the 5 m orbital photo.
       </div>
 
       {(failed || !grid) && (

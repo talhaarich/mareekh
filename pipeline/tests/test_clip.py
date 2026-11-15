@@ -91,13 +91,26 @@ def test_box_is_covered_and_values_are_original(tmp_path: Path) -> None:
 
     out = load_dem(str(tmp_path / "out.tif"))
     assert out.shape == (meta["height"], meta["width"])
-    # The output pixels are the original pixels from the corresponding window
-    # Verify the output bounds match the box approximately
+
+    # Whole cells only: the box is covered, each edge at most one cell outside it.
+    lat_cell = np.degrees(res_m / radius)
+    lon_cell = np.degrees(res_m / (radius * np.cos(np.radians(18.455))))
     s, w, n, e = meta["bounds"]
-    assert s == pytest.approx(18.45, abs=1e-4)
-    assert n == pytest.approx(18.46, abs=1e-4)
-    assert w == pytest.approx(77.45, abs=1e-4)
-    assert e == pytest.approx(77.46, abs=1e-4)
+    assert s <= 18.45 + 1e-9 and 18.45 - s < lat_cell
+    assert n >= 18.46 - 1e-9 and n - 18.46 < lat_cell
+    assert w <= 77.45 + 1e-9 and 77.45 - w < lon_cell
+    assert e >= 77.46 - 1e-9 and e - 77.46 < lon_cell
+    # The reported bounds are the outer edges of exactly the cells written.
+    assert (n - s) / meta["height"] == pytest.approx(lat_cell, rel=1e-6)
+    assert (e - w) / meta["width"] == pytest.approx(lon_cell, rel=1e-6)
+
+    # The values are the source's own cells, unresampled: source cell (row, col) has value row * 100 + col.
+    north_edge = 18.455 + 50 * lat_cell
+    west_edge = 77.455 - 50 * lon_cell
+    row0 = round((north_edge - n) / lat_cell)
+    col0 = round((w - west_edge) / lon_cell)
+    expected = dem[row0 : row0 + meta["height"], col0 : col0 + meta["width"]]
+    np.testing.assert_array_equal(out, expected)
 
 
 def test_nodata_becomes_nan(tmp_path: Path) -> None:

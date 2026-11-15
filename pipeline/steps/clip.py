@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import numpy as np
 import rasterio
-from pyproj import Transformer
 from pyproj.enums import TransformDirection
 from rasterio.windows import bounds as window_bounds
-from rasterio.windows import from_bounds
+
+from pipeline.steps.window import box_window
 
 
 def load_dem(path: str) -> np.ndarray:
@@ -59,26 +59,9 @@ def clip_dem(
     Raises:
         ValueError: the file is not in a projected CRS, or the box does not overlap it.
     """
-    south, west, north, east = bounds
-
     with rasterio.open(src_path) as src:
-        if src.crs is None:
-            raise ValueError(f"{src_path} has no CRS")
-        if src.crs.is_geographic:
-            raise ValueError(f"{src_path} is in a geographic CRS, not a projected one")
-
-        geodetic = src.crs.geodetic_crs
-        transformer = Transformer.from_crs(geodetic, src.crs, always_xy=True)
-
-        x_west, y_south = transformer.transform(west, south)
-        x_east, y_north = transformer.transform(east, north)
-        left, bottom = min(x_west, x_east), min(y_south, y_north)
-        right, top = max(x_west, x_east), max(y_south, y_north)
-
-        window = from_bounds(left, bottom, right, top, src.transform)
-        window = window.crop(src.height, src.width)
-        if window.width <= 0 or window.height <= 0:
-            raise ValueError(f"bounds {bounds} do not overlap {src_path}")
+        # Whole cells only: a fractional window's bounds would not match the pixels read.
+        window, transformer = box_window(src, bounds)
 
         out = src.read(
             1,

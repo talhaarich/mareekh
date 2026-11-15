@@ -8,15 +8,102 @@ bottom-left for PNG overlays, always in lon/lat order).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 import numpy as np
 import rasterio
 from PIL import Image
-from pyproj import Transformer
 from rasterio.enums import Resampling
 from rasterio.windows import bounds as window_bounds
-from rasterio.windows import from_bounds
+
+from pipeline.steps.window import box_window
+
+RENDERS = ("grey", "rgb", "hillshade", "elevation", "topo")
+
+# Picture-making choices (not physical constants): light from the north-west, 45 degrees up,
+# the usual cartographic convention, and the stretch percentiles for photos.
+SUN_AZIMUTH_DEG = 315.0
+SUN_ALTITUDE_DEG = 45.0
+PHOTO_STRETCH_PCT = (0.5, 99.5)
+
+
+def _hex_rgb(colour: str) -> tuple[int, int, int]:
+    c = colour.lstrip("#")
+    return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+
+
+def hillshade(dem: np.ndarray, cell_m: tuple[float, float]) -> np.ndarray:
+    """Hillshade 0..1 from heights (metres) with cell size (x, y) in metres. NaN stays NaN.
+
+    Args:
+        dem: Heights, metres, row 0 north.
+        cell_m: Cell width and height on the ground, metres.
+
+    Returns:
+        Float array 0..1 (1 = facing the light), same shape.
+    """
+    z = np.where(np.isnan(dem), np.nanmean(dem), dem).astype(np.float64)
+    dz_dy, dz_dx = np.gradient(z, cell_m[1], cell_m[0])
+    dz_dy = -dz_dy  # rows run north to south; flip so +y is north
+    slope = np.arctan(np.hypot(dz_dx, dz_dy))
+    aspect = np.arctan2(-dz_dx, -dz_dy)  # direction the slope faces, clockwise from north
+    az = np.radians(SUN_AZIMUTH_DEG)
+    alt = np.radians(SUN_ALTITUDE_DEG)
+    shade = np.sin(alt) * np.cos(slope) + np.cos(alt) * np.sin(slope) * np.cos(az - aspect)
+    shade = np.clip(shade, 0, 1)
+    return np.where(np.isnan(dem), np.nan, shade)
+
+
+def _ramp(t: np.ndarray, stops: list[str]) -> np.ndarray:
+    """Colour 0..255 (H, W, 3) for t in 0..1 along evenly spaced hex colour stops."""
+    cols = np.array([_hex_rgb(s) for s in stops], dtype=np.float64)
+    pos = np.linspace(0, 1, len(stops))
+    t = np.clip(np.nan_to_num(t), 0, 1)
+    return np.stack([np.interp(t, pos, cols[:, k]) for k in range(3)], axis=-1)
+
+
+def _render(
+    arr: np.ndarray, valid: np.ndarray, render: str, cell_m: tuple[float, float], options: dict[str, Any]
+) -> np.ndarray:
+    """RGBA uint8 image (H, W, 4) for one render mode. ``arr`` is (bands, H, W)."""
+    h, w = arr.shape[1:]
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    if render == "rgb":
+        rgba[..., :3] = np.clip(arr[:3].transpose(1, 2, 0), 0, 255).astype(np.uint8)
+    elif render == "grey":
+        values = arr[0][valid]
+        lo, hi = (np.percentile(values, PHOTO_STRETCH_PCT) if values.size else (0.0, 1.0))
+        g = np.clip((arr[0] - lo) / (hi - lo if hi > lo else 1.0) * 255.0, 0, 255).astype(np.uint8)
+        rgba[..., 0] = rgba[..., 1] = rgba[..., 2] = g
+    else:
+        dem = np.where(valid, arr[0], np.nan)
+        shade = hillshade(dem, cell_m)
+        if render == "hillshade":
+            g = (np.nan_to_num(shade) * 255).astype(np.uint8)
+            rgba[..., 0] = rgba[..., 1] = rgba[..., 2] = g
+        elif render == "elevation":
+            lo, hi = float(np.nanmin(dem)), float(np.nanmax(dem))
+            colour = _ramp((dem - lo) / (hi - lo if hi > lo else 1.0), options["ramp"])
+            lit = colour * (0.55 + 0.45 * np.nan_to_num(shade))[..., None]
+            rgba[..., :3] = np.clip(lit, 0, 255).astype(np.uint8)
+        elif render == "topo":
+            base = 150 + 85 * np.nan_to_num(shade)  # light shading under the lines
+            interval = float(options["interval_m"])
+            index_every = int(options.get("index_every", 5))
+            level = np.floor(np.nan_to_num(dem, nan=0.0) / interval)
+            edge = np.zeros_like(level, dtype=bool)
+            edge[:, 1:] |= level[:, 1:] != level[:, :-1]
+            edge[1:, :] |= level[1:, :] != level[:-1, :]
+            index = edge & (np.mod(level, index_every) == 0)
+            g = np.where(index, 40, np.where(edge, 95, base))
+            rgba[..., 0] = rgba[..., 1] = rgba[..., 2] = np.clip(g, 0, 255).astype(np.uint8)
+        else:
+            raise ValueError(f"unknown render {render!r}; use one of {RENDERS}")
+
+    rgba[..., 3] = np.where(valid, 255, 0).astype(np.uint8)
+    rgba[~valid, :3] = 0
+    return rgba
 
 
 def export_png(
@@ -25,117 +112,124 @@ def export_png(
     out_path: str,
     max_px: int = 4096,
     nearest: bool = False,
+    render: str = "grey",
+    nodata: float | None = None,
+    options: dict[str, Any] | None = None,
 ) -> List[List[float]]:
     """Export a georeferenced raster as an RGBA PNG, with transparent empty/no-data.
 
-    The input raster is assumed to be in a projected CRS with metric pixels, and
-    the output PNG preserves the metric grid (never reprojects). Cells that are
-    no-data or outside the file's data mask are transparent in the PNG.
+    The raster stays in its own projected CRS (never reprojected): the box is converted into
+    that CRS and the window of whole cells covering it is read. The longest side is capped at
+    ``max_px``; ``scale`` in ``options`` (DEM renders) draws more pixels per cell for a smoother picture.
 
-    The box (south, west, north, east) in degrees is converted into the file's
-    own projected CRS (pyproj, from ``src.crs.geodetic_crs`` to ``src.crs``,
-    always_xy=True) and only the window of whole cells covering it is read, in
-    the file's own pixels. The PNG is then resized so the longest side is at most
-    ``max_px``: nearest-neighbour if ``nearest=True`` (for class maps), otherwise
-    smooth resampling. Row 0 stays the north edge in the PNG.
+    Render modes:
+        grey: band 1, stretched between the 0.5th and 99.5th percentile (photos).
+        rgb: bands 1-3 as colours (class maps); a pixel that is 0 in all three is no data.
+        hillshade: shading of a height file, light from the north-west.
+        elevation: height on ``options["ramp"]`` (hex colours, low to high), lit by the hillshade.
+        topo: contours every ``options["interval_m"]`` metres over light shading; every
+            ``options["index_every"]``-th line darker.
 
     Args:
-        src_path: Path to the input raster (GeoTIFF or similar).
+        src_path: Input raster (GeoTIFF), projected CRS.
         bounds: (south, west, north, east) in degrees.
         out_path: Where to write the PNG.
-        max_px: Maximum width or height in pixels for the exported PNG. The
-            longest side is scaled down if it is larger.
-        nearest: If True, use nearest-neighbour resampling; otherwise smooth.
+        max_px: Maximum width or height in pixels.
+        nearest: Nearest-neighbour resampling (class maps) instead of smooth.
+        render: One of ``RENDERS``.
+        nodata: Value treated as no data, overriding the file's own (e.g. 0 for a photo with none set).
+        options: Extra settings for the render mode (see above), and ``scale``.
 
     Returns:
-        Four corners as [lon, lat] pairs: top-left, top-right, bottom-right,
-        bottom-left (MapLibre image-source order). The PNG has row 0 as the top
-        edge, so top-left is the first corner (north-west).
+        Four corners as [lon, lat] pairs: top-left, top-right, bottom-right, bottom-left
+        (MapLibre image-source order), the outer edges of the cells drawn.
 
     Raises:
-        ValueError: the source file has no CRS, is in a geographic CRS, or the
-            bounds do not overlap the file.
+        ValueError: no CRS, a geographic CRS, the box does not overlap the file, or an unknown render.
     """
-    south, west, north, east = bounds
+    if render not in RENDERS:
+        raise ValueError(f"unknown render {render!r}; use one of {RENDERS}")
+    options = options or {}
 
     with rasterio.open(src_path) as src:
-        if src.crs is None:
-            raise ValueError(f"{src_path} has no CRS")
-        if src.crs.is_geographic:
-            raise ValueError(f"{src_path} is in a geographic CRS, not a projected one")
+        window, transformer = box_window(src, bounds)
 
-        geodetic = src.crs.geodetic_crs
-        transformer = Transformer.from_crs(geodetic, src.crs, always_xy=True)
+        scale = float(options.get("scale", 1.0))
+        out_w = max(1, int(round(window.width * scale)))
+        out_h = max(1, int(round(window.height * scale)))
+        shrink = max(out_w, out_h) / float(max_px)
+        if shrink > 1.0:
+            out_w = max(1, int(round(out_w / shrink)))
+            out_h = max(1, int(round(out_h / shrink)))
 
-        x_west, y_south = transformer.transform(west, south)
-        x_east, y_north = transformer.transform(east, north)
-        left, bottom = min(x_west, x_east), min(y_south, y_north)
-        right, top = max(x_west, x_east), max(y_south, y_north)
-
-        window = from_bounds(left, bottom, right, top, src.transform)
-        window = window.crop(src.height, src.width)
-        if window.width <= 0 or window.height <= 0:
-            raise ValueError(f"bounds {bounds} do not overlap {src_path}")
-
-        # Output pixel size: keep the metric grid, scale the longest side to max_px.
-        resampling = Resampling.nearest if nearest else Resampling.average
-        out_w = int(window.width)
-        out_h = int(window.height)
-        scale = max(out_w, out_h) / float(max_px)
-        if scale > 1.0:
-            out_w = max(1, int(round(out_w / scale)))
-            out_h = max(1, int(round(out_h / scale)))
-
-        arr = src.read(
-            1,
-            window=window,
-            out_dtype=np.float32,
-            out_shape=(out_h, out_w),
-            resampling=resampling,
-        )
-        mask = src.read_masks(1, window=window)
-        if mask.shape != (out_h, out_w):
-            mask_img = Image.fromarray((mask.astype(np.uint8)) * 255).resize(
-                (out_w, out_h), Image.NEAREST
-            )
-            mask = np.asarray(mask_img) > 0
+        bands = [1, 2, 3] if render == "rgb" else [1]
+        if render == "rgb" and src.count < 3:
+            raise ValueError(f"{src_path} has {src.count} band(s); render 'rgb' needs 3")
+        if nearest:
+            resampling = Resampling.nearest
+        elif out_w * out_h > window.width * window.height:
+            resampling = Resampling.bilinear  # drawing more pixels than cells: interpolate
         else:
-            mask = mask.astype(bool)
+            resampling = Resampling.average
+        arr = src.read(bands, window=window, out_dtype=np.float32, out_shape=(len(bands), out_h, out_w), resampling=resampling)
 
-        # The output extent is the window's extent; out_shape preserves it.
+        file_nodata = src.nodatavals[0] if src.nodatavals else None
+        nd = nodata if nodata is not None else file_nodata
+        if render == "rgb":
+            valid = np.any(arr > 0, axis=0)
+        else:
+            valid = np.isfinite(arr[0])
+            if nd is not None:
+                # Smooth resampling blends no-data into neighbours; re-read the mask with nearest.
+                raw = src.read(1, window=window, out_shape=(out_h, out_w), resampling=Resampling.nearest)
+                raw_ok = ~np.isclose(raw, float(nd))
+                valid &= raw_ok & ~np.isclose(arr[0], float(nd))
+                if raw_ok.any():
+                    # A pixel blended with a no-data neighbour falls outside the real values' range.
+                    lo, hi = float(raw[raw_ok].min()), float(raw[raw_ok].max())
+                    valid &= (arr[0] >= lo) & (arr[0] <= hi)
+
         out_left, out_bottom, out_right, out_top = window_bounds(window, src.transform)
+        cell_m = ((out_right - out_left) / out_w, (out_top - out_bottom) / out_h)
 
-        nodata = src.nodatavals[0] if src.nodatavals else None
-        valid = mask
-        if nodata is not None:
-            valid = valid & ~np.isclose(arr, float(nodata))
-
-    # Build the RGBA PNG. Valid cells carry the value, scaled to 0-255 greyscale,
-    # with alpha 255; no-data and empty cells are fully transparent.
-    if np.all(~valid):
-        img = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
+    if not valid.any():
+        rgba = np.zeros((out_h, out_w, 4), dtype=np.uint8)
     else:
-        values = arr[valid]
-        vmin, vmax = float(np.min(values)), float(np.max(values))
-        if vmax > vmin:
-            scaled = ((arr - vmin) / (vmax - vmin) * 255.0).astype(np.uint8)
-        else:
-            scaled = np.full_like(arr, 128, dtype=np.uint8)
-        scaled[~valid] = 0
-        img = Image.fromarray(scaled, mode="L").convert("RGBA")
-        alpha = (valid * 255).astype(np.uint8)
-        img.putalpha(Image.fromarray(alpha, mode="L"))
+        rgba = _render(arr, valid, render, cell_m, options)
 
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    img.save(out_path)
+    Image.fromarray(rgba, mode="RGBA").save(out_path, optimize=True)
 
     lon_west, lat_south = transformer.transform(out_left, out_bottom, direction="INVERSE")
     lon_east, lat_north = transformer.transform(out_right, out_top, direction="INVERSE")
-
-    # Corners in MapLibre image-source order: TL, TR, BR, BL.
     return [
-        [lon_west, lat_north],  # TL (top-left, north-west)
-        [lon_east, lat_north],  # TR (top-right, north-east)
-        [lon_east, lat_south],  # BR (bottom-right, south-east)
-        [lon_west, lat_south],  # BL (bottom-left, south-west)
+        [lon_west, lat_north],  # TL (north-west)
+        [lon_east, lat_north],  # TR
+        [lon_east, lat_south],  # BR
+        [lon_west, lat_south],  # BL (south-west)
     ]
+
+
+def classes_present(
+    src_path: str, bounds: tuple[float, float, float, float], classes: list[dict[str, Any]]
+) -> list[dict[str, str]]:
+    """Legend entries for the classes of an RGB class map that actually occur inside the box.
+
+    Args:
+        src_path: 3-band class map.
+        bounds: (south, west, north, east) in degrees.
+        classes: ``{"label": str, "colors": ["#rrggbb", ...]}``; any of a class's colours counts
+            (e.g. high and medium confidence). The first colour is used in the legend.
+
+    Returns:
+        ``[{"color", "label"}]`` in the order given, only for classes present.
+    """
+    with rasterio.open(src_path) as src:
+        window, _ = box_window(src, bounds)
+        rgb = src.read([1, 2, 3], window=window).transpose(1, 2, 0).reshape(-1, 3)
+    found = {tuple(int(v) for v in px) for px in np.unique(rgb, axis=0)}
+    legend = []
+    for c in classes:
+        if any(_hex_rgb(col) in found for col in c["colors"]):
+            legend.append({"color": c["colors"][0], "label": c["label"]})
+    return legend

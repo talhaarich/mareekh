@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { openGroundScene } from '../ground/open'
 import { bearingDeg, distanceM, sample, walkHomeS } from '../lib/helpers'
 import { useInteraction } from '../map/interaction'
 import { useData } from '../state/data'
@@ -27,8 +28,6 @@ export default function Inspector() {
   const assumptions = useData((s) => s.assumptions)
   const params = usePlanParams((s) => s.params)
   usePlan((s) => s.walkHomeVersion) // re-read the walk-home field when a new one arrives
-  const standHere = useInteraction((s) => s.standHere)
-  const groundAvailable = useInteraction((s) => s.groundAvailable)
 
   useEffect(() => {
     if (!at) return
@@ -91,9 +90,8 @@ export default function Inspector() {
           />
           <button
             type="button"
-            disabled={!groundAvailable}
-            onClick={() => standHere(at, null)}
-            title={groundAvailable ? 'Simulated ground view from orbital data' : 'Needs the 3D height tiles'}
+            onClick={() => openGroundScene(at, null)}
+            title="Simulated 3D ground view from orbital data"
             className="mt-1 w-full rounded-[3px] border border-route px-2 py-1 text-xs font-medium text-route hover:bg-route/10 disabled:opacity-40"
           >
             Stand here (simulated view)

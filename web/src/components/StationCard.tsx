@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { openGroundScene } from '../ground/open'
 import { bearingDeg, distanceM, walkHomeS } from '../lib/helpers'
 import { useInteraction } from '../map/interaction'
 import { useData, type Photo } from '../state/data'
@@ -45,8 +46,7 @@ function Card({ id }: { id: string }) {
   const base = stations[0]
   const inWalk = new Set(included ?? defaultStops(stations)).has(id)
   const walkHome = useWalkHome(station?.lat ?? NaN, station?.lon ?? NaN)
-  const standHere = useInteraction((s) => s.standHere)
-  const groundAvailable = useInteraction((s) => s.groundAvailable)
+  const gridLoaded = useData((s) => s.grid !== null)
   if (!station || !base) return null
   const isBase = station.id === base.id
 
@@ -87,9 +87,9 @@ function Card({ id }: { id: string }) {
       )}
       <button
         type="button"
-        disabled={!groundAvailable}
-        onClick={() => standHere(here, station.id)}
-        title={groundAvailable ? 'Simulated ground view from orbital data' : 'Needs the 3D height tiles and the height grid'}
+        disabled={!gridLoaded}
+        onClick={() => openGroundScene(here, station.id)}
+        title={gridLoaded ? 'Simulated 3D ground view from orbital data' : 'Needs the height grid'}
         className="w-full rounded-[3px] border border-route px-3 py-1.5 text-sm font-medium text-route hover:bg-route/10 disabled:opacity-40"
       >
         Stand here (simulated view)

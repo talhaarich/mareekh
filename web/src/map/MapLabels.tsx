@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type { MapRef } from 'react-map-gl/maplibre'
-import { layoutLabels, type LabelInput, type PlacedLabel, type Rect } from './labelLayout'
+import { layoutLabels, wrapLabel, type LabelInput, type PlacedLabel, type Rect, type Segment } from './labelLayout'
 import { readToken } from './tokens'
 
 export interface LabelItem {
@@ -18,9 +18,18 @@ interface Props {
   containerRef: RefObject<HTMLDivElement | null>
   ready: boolean
   items: LabelItem[]
+  /** Lines to keep labels off (the route legs), as lat/lon paths. */
+  avoidLines?: { lat: number; lon: number }[][]
+  /** Changes when something the labels must avoid changes size (e.g. the map key opens or closes). */
+  relayoutKey?: unknown
 }
 
-const LABEL_HEIGHT = 20
+const LINE_HEIGHT = 15 // px per text line inside a label
+const LABEL_VPAD = 5 // top + bottom padding and border
+/** Wider than this, a label wraps onto two lines. */
+const MAX_ONE_LINE_W = 170
+/** Route points closer than this on screen are merged, so long routes stay cheap to avoid. */
+const MIN_SEGMENT_PX = 6
 const LABEL_PAD = 18 // px-2 each side plus a 1 px border each side
 
 let measureCtx: CanvasRenderingContext2D | null = null
@@ -41,12 +50,19 @@ function relativeRect(el: Element, origin: DOMRect): Rect {
  * Labels with leader lines, laid out in screen space on every pan and zoom.
  * Anything marked data-map-obstacle (cards, the colour key) and MapLibre's own controls are kept clear.
  */
-export default function MapLabels({ mapRef, containerRef, ready, items }: Props) {
+export default function MapLabels({ mapRef, containerRef, ready, items, avoidLines, relayoutKey }: Props) {
   const [placed, setPlaced] = useState<PlacedLabel[]>([])
   const frame = useRef(0)
 
-  const widths = useMemo(
-    () => new Map(items.map((i) => [i.id, Math.ceil(textWidth(i.text)) + LABEL_PAD])),
+  const shapes = useMemo(
+    () =>
+      new Map(
+        items.map((i) => {
+          const lines = wrapLabel(i.text, textWidth, MAX_ONE_LINE_W)
+          const w = Math.ceil(Math.max(...lines.map(textWidth))) + LABEL_PAD
+          return [i.id, { lines, w, h: lines.length * LINE_HEIGHT + LABEL_VPAD }]
+        }),
+      ),
     [items],
   )
 
@@ -60,12 +76,23 @@ export default function MapLabels({ mapRef, containerRef, ready, items }: Props)
       const origin = container.getBoundingClientRect()
       const inputs: LabelInput[] = items.map((i) => {
         const p = map.project([i.lon, i.lat])
-        return { id: i.id, ax: p.x, ay: p.y, w: widths.get(i.id) ?? 80, h: LABEL_HEIGHT }
+        const s = shapes.get(i.id)
+        return { id: i.id, ax: p.x, ay: p.y, w: s?.w ?? 80, h: s?.h ?? LINE_HEIGHT + LABEL_VPAD }
       })
+      const lines: Segment[] = []
+      for (const path of avoidLines ?? []) {
+        let prev: { x: number; y: number } | null = null
+        for (const pt of path) {
+          const q = map.project([pt.lon, pt.lat])
+          if (prev && Math.hypot(q.x - prev.x, q.y - prev.y) < MIN_SEGMENT_PX) continue
+          if (prev) lines.push({ x1: prev.x, y1: prev.y, x2: q.x, y2: q.y })
+          prev = q
+        }
+      }
       const obstacles = Array.from(
         container.querySelectorAll('[data-map-obstacle], .maplibregl-ctrl-group'),
       ).map((el) => relativeRect(el, origin))
-      setPlaced(layoutLabels(inputs, { width: origin.width, height: origin.height, obstacles }))
+      setPlaced(layoutLabels(inputs, { width: origin.width, height: origin.height, obstacles, lines }))
     }
     const schedule = () => {
       if (frame.current === 0) frame.current = requestAnimationFrame(run)
@@ -80,7 +107,7 @@ export default function MapLabels({ mapRef, containerRef, ready, items }: Props)
       if (frame.current !== 0) cancelAnimationFrame(frame.current)
       frame.current = 0
     }
-  }, [ready, items, widths, mapRef, containerRef])
+  }, [ready, items, shapes, avoidLines, relayoutKey, mapRef, containerRef])
 
   const byId = new Map(items.map((i) => [i.id, i]))
 
@@ -106,7 +133,7 @@ export default function MapLabels({ mapRef, containerRef, ready, items }: Props)
         const item = byId.get(p.id)
         if (!item) return null
         const box =
-          'absolute flex items-center rounded-[2px] border border-fg/75 bg-bg/90 px-2 font-mono text-[12px] font-semibold text-fg'
+          'absolute flex items-center rounded-[2px] border border-fg/75 bg-bg/90 px-2 text-left font-mono text-[12px] font-semibold text-fg'
         const style = { left: p.x, top: p.y, width: p.w, height: p.h }
         return item.onSelect ? (
           <button
@@ -116,11 +143,23 @@ export default function MapLabels({ mapRef, containerRef, ready, items }: Props)
             className={`${box} pointer-events-auto cursor-pointer hover:border-brand`}
             onClick={item.onSelect}
           >
-            <span className="truncate">{item.text}</span>
+            <span className="block min-w-0 leading-[15px]">
+              {(shapes.get(p.id)?.lines ?? [item.text]).map((line, k) => (
+                <span key={k} className="block truncate">
+                  {line}
+                </span>
+              ))}
+            </span>
           </button>
         ) : (
           <div key={p.id} style={style} className={box}>
-            <span className="truncate">{item.text}</span>
+            <span className="block min-w-0 leading-[15px]">
+              {(shapes.get(p.id)?.lines ?? [item.text]).map((line, k) => (
+                <span key={k} className="block truncate">
+                  {line}
+                </span>
+              ))}
+            </span>
           </div>
         )
       })}

@@ -27,11 +27,21 @@ export interface PlacedLabel extends Rect {
   leader: { x1: number; y1: number; x2: number; y2: number } | null
 }
 
+export interface Segment {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
+
 export interface LayoutOptions {
   width: number
   height: number
   /** On-map controls and cards the labels must stay clear of. */
   obstacles: Rect[]
+  /** Lines the labels should not cover (the route), screen pixels. Softer than a box: covering
+   * a little route beats covering another label. */
+  lines?: Segment[]
   /** Pixel radius kept clear around every marker. */
   markerRadius?: number
 }
@@ -41,6 +51,39 @@ export function overlapArea(a: Rect, b: Rect): number {
   const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
   return w > 0 && h > 0 ? w * h : 0
 }
+
+/** Length in pixels of the part of a segment inside a rectangle (Liang-Barsky clipping). */
+export function segmentInRect(s: Segment, r: Rect): number {
+  const dx = s.x2 - s.x1
+  const dy = s.y2 - s.y1
+  let t0 = 0
+  let t1 = 1
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0
+    const t = q / p
+    if (p < 0) {
+      if (t > t1) return false
+      if (t > t0) t0 = t
+    } else {
+      if (t < t0) return false
+      if (t < t1) t1 = t
+    }
+    return true
+  }
+  if (
+    clip(-dx, s.x1 - r.x) &&
+    clip(dx, r.x + r.w - s.x1) &&
+    clip(-dy, s.y1 - r.y) &&
+    clip(dy, r.y + r.h - s.y1) &&
+    t1 > t0
+  ) {
+    return (t1 - t0) * Math.hypot(dx, dy)
+  }
+  return 0
+}
+
+/** Cost of a pixel of route under a label, against a square pixel of label overlap (which costs 1). */
+const LINE_WEIGHT = 15
 
 // Preferred sides, in order: right, up-right, down-right, up, down, up-left, down-left, left.
 const ANGLES = [0, -45, 45, -90, 90, -135, 135, 180].map((d) => (d * Math.PI) / 180)
@@ -75,6 +118,7 @@ export function layoutLabels(inputs: LabelInput[], opts: LayoutOptions): PlacedL
         let overlap = r.w * r.h - overlapArea(r, screen) // the part off screen counts as overlap
         for (const f of fixed) overlap += overlapArea(r, f)
         for (const t of taken) overlap += overlapArea(r, t)
+        if (opts.lines) for (const s of opts.lines) overlap += LINE_WEIGHT * segmentInRect(s, r)
         const cost = overlap * 1000 + di * 30 + k * 8
         if (cost < bestCost) {
           bestCost = cost
@@ -97,4 +141,23 @@ export function layoutLabels(inputs: LabelInput[], opts: LayoutOptions): PlacedL
     })
   }
   return placed
+}
+
+/** The text as one line, or two balanced lines split at the space that gives the narrowest label. */
+export function wrapLabel(text: string, measure: (t: string) => number, maxOneLine: number): string[] {
+  if (measure(text) <= maxOneLine) return [text]
+  const words = text.split(' ')
+  if (words.length < 2) return [text]
+  let best: string[] = [text]
+  let bestW = Infinity
+  for (let i = 1; i < words.length; i++) {
+    const a = words.slice(0, i).join(' ')
+    const b = words.slice(i).join(' ')
+    const w = Math.max(measure(a), measure(b))
+    if (w < bestW) {
+      bestW = w
+      best = [a, b]
+    }
+  }
+  return best
 }

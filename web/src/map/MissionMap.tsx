@@ -148,6 +148,9 @@ export default function MissionMap() {
   const stations = useData((s) => s.stations)
   const available = useLayerAvailability((s) => s.available)
   const turnBack = usePlan((s) => s.result?.turnBack ?? null)
+  const legs = usePlan((s) => s.result?.legs)
+  const routePaths = useMemo(() => (legs ?? []).filter((l) => l.ok).map((l) => l.path), [legs])
+  const [keyOpen, setKeyOpen] = useState(true)
   const selectStation = useInteraction((s) => s.selectStation)
   const pins = usePins((s) => s.pins)
   const included = useWalkStops((s) => s.included)
@@ -507,6 +510,8 @@ export default function MissionMap() {
           containerRef={containerRef}
           ready={mapReady}
           items={labelItems}
+          avoidLines={routePaths}
+          relayoutKey={keyOpen}
         />
       )}
 
@@ -537,11 +542,33 @@ export default function MissionMap() {
         </div>
       )}
 
-      {(activeView || activeOverlay || overlay === SLOPE_OVERLAY_ID || reach !== 'off') && (
+      {(activeView || activeOverlay || overlay === SLOPE_OVERLAY_ID || reach !== 'off') &&
+        (!keyOpen ? (
+          <button
+            type="button"
+            data-map-obstacle
+            onClick={() => setKeyOpen(true)}
+            aria-expanded={false}
+            className="absolute bottom-3 left-3 rounded-[3px] border border-line bg-panel/90 px-3 py-1.5 text-xs font-medium text-fg backdrop-blur hover:border-fg-muted"
+          >
+            Map key ▸
+          </button>
+        ) : (
         <div
           data-map-obstacle
-          className="pointer-events-none absolute bottom-3 left-3 max-w-xs space-y-3 rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
+          className="absolute bottom-3 left-3 max-h-[55%] max-w-xs space-y-3 overflow-y-auto rounded-md border border-line bg-panel/90 p-3 text-xs text-fg-muted backdrop-blur"
         >
+          <div className="flex items-center justify-between">
+            <span className="font-display text-[13px] font-semibold uppercase tracking-[0.08em] text-fg">Map key</span>
+            <button
+              type="button"
+              onClick={() => setKeyOpen(false)}
+              aria-expanded
+              className="rounded-[3px] border border-line px-2 py-0.5 text-[11px] text-fg-muted hover:text-fg"
+            >
+              Hide ▾
+            </button>
+          </div>
           {activeView && <KeyBlock title="View" layer={activeView} missing={available[activeView.id] === false} />}
           {activeOverlay && (
             <KeyBlock title="Overlay" layer={activeOverlay} missing={available[activeOverlay.id] === false} />
@@ -549,7 +576,7 @@ export default function MissionMap() {
           {overlay === SLOPE_OVERLAY_ID && <SlopeKeyBlock />}
           {reach !== 'off' && <ReachKeyBlock />}
         </div>
-      )}
+        ))}
     </div>
   )
 }

@@ -26,13 +26,6 @@ interface InteractionState {
   /** Camera view the 3D map should fly to; `seq` changes on every request. */
   cameraPreset: { name: CameraPreset; seq: number } | null
   /**
-   * Ground view ("Stand here"): the point the viewer stands on, and the station there (null for any other
-   * point). `seq` changes on every request, so standing somewhere else moves the viewer. Null: normal map.
-   */
-  ground: { at: { lat: number; lon: number }; stationId: string | null; seq: number } | null
-  /** Whether the ground view can open: the map has 3D height tiles and the height grid has loaded. Set by the map. */
-  groundAvailable: boolean
-  /**
    * Pixels along each edge of the map covered by the floating panels, rails and top bar (set by AppShell).
    * Labels and the position arrow keep out of these strips.
    */
@@ -51,10 +44,6 @@ interface InteractionState {
   setPlaySpeed: (speed: number) => void
   setInspectAt: (p: { lat: number; lon: number } | null) => void
   setCameraPreset: (name: CameraPreset) => void
-  /** Stand at a point (and close the station card and point card, which the ground view replaces). */
-  standHere: (at: { lat: number; lon: number }, stationId: string | null) => void
-  leaveGround: () => void
-  setGroundAvailable: (on: boolean) => void
   setMapInsets: (insets: MapInsets, areas: PanelArea[]) => void
 }
 
@@ -84,8 +73,6 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   playSpeed: 60,
   inspectAt: null,
   cameraPreset: null,
-  ground: null,
-  groundAvailable: false,
   mapInsets: NO_INSETS,
   panelAreas: [],
 
@@ -98,14 +85,6 @@ export const useInteraction = create<InteractionState>()((set, get) => ({
   setPlaySpeed: (speed) => set({ playSpeed: speed }),
   setInspectAt: (p) => set({ inspectAt: p }),
   setCameraPreset: (name) => set({ cameraPreset: { name, seq: (get().cameraPreset?.seq ?? 0) + 1 } }),
-  standHere: (at, stationId) =>
-    set({
-      ground: { at: { lat: at.lat, lon: at.lon }, stationId, seq: (get().ground?.seq ?? 0) + 1 },
-      selectedStationId: null,
-      inspectAt: null,
-    }),
-  leaveGround: () => set({ ground: null }),
-  setGroundAvailable: (on) => set({ groundAvailable: on }),
   setMapInsets: (insets, areas) => {
     const cur = get().mapInsets
     if (cur.top !== insets.top || cur.right !== insets.right || cur.bottom !== insets.bottom || cur.left !== insets.left) {
